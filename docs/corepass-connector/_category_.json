@@ -1,0 +1,11 @@
+{
+  "label": "CorePass Connector",
+  "position": 2,
+  "link": {
+    "type": "generated-index",
+    "description": "5 minutes to learn how to use CorePass Connector",
+
+    "title": "CorePass Connector"
+  },
+  "collapsible": false
+}
