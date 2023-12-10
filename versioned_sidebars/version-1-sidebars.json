@@ -1,0 +1,14 @@
+{
+  "corepass-connector": [
+    "corepass-connector/authentication",
+    "corepass-connector/authorization",
+    "corepass-connector/deployment-info",
+    "corepass-connector/what-is-connector"
+  ],
+  "corepass-protocol": [
+    "corepass-protocol/corepass-protocol"
+  ],
+  "payto-protocol": [
+    "payto-protocol/payto-protocol"
+  ]
+}

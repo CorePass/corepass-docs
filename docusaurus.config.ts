@@ -10,6 +10,7 @@ const isBuildFast = !!process.env.BUILD_FAST;
 const isCloudflarePages = !!process.env.CF_PAGES;
 const isDeployPreview = isCloudflarePages && !!process.env.CF_PAGES_PULL_REQUEST;
 const isBranchDeploy = isCloudflarePages && process.env.CF_PAGES_BRANCH !== 'master';
+const baseUrl = process.env.BASE_URL ?? '/';
 
 function isPrerelease(version: string) {
   return (
@@ -35,7 +36,7 @@ const config: Config = {
 
   url: "https://docs.corepass.net",
 
-  baseUrl: "/",
+  baseUrl,
   organizationName: "CorePass",
   projectName: "CorePass",
 
@@ -57,6 +58,7 @@ const config: Config = {
             return `https://github.com/CorePass/corepass-docs/edit/master/${versionDocsDirPath}/${docPath}`;
           },
           routeBasePath: '/',
+          path: 'docs',
           showLastUpdateAuthor: true,
           showLastUpdateTime: true,
           disableVersioning: isVersioningDisabled,
@@ -164,15 +166,15 @@ const config: Config = {
             items: [
               {
                 label: "CorePass Connector",
-                to: "/docs/category/corepass-connector",
+                to: "/category/corepass-connector",
               },
               {
                 label: "CorePass Protocol",
-                to: "/docs/category/corepass-protocol",
+                to: "/category/corepass-protocol",
               },
               {
                 label: "Payto Protocol",
-                to: "/docs/category/payto-protocol",
+                to: "/category/payto-protocol",
               },
             ],
           },
