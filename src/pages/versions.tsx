@@ -68,7 +68,7 @@ export default function Version(): JSX.Element {
               <tr>
                 <th>{latestVersion.label}</th>
                 <td>
-                  <Link to={latestVersion.path}>
+                  <Link to={`${latestVersion.path}/intro`}>
                     <DocumentationLabel />
                   </Link>
                 </td>
@@ -95,7 +95,7 @@ export default function Version(): JSX.Element {
                 <tr>
                   <th>{currentVersion.label}</th>
                   <td>
-                    <Link to={currentVersion.path}>
+                    <Link to={`${currentVersion.path}/intro`}>
                       <DocumentationLabel />
                     </Link>
                   </td>
@@ -124,7 +124,7 @@ export default function Version(): JSX.Element {
                   <tr key={version.name}>
                     <th>{version.label}</th>
                     <td>
-                      <Link to={version.path}>
+                      <Link to={`${version.path}/intro`}>
                         <DocumentationLabel />
                       </Link>
                     </td>
