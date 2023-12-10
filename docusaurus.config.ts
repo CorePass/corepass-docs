@@ -162,19 +162,15 @@ const config: Config = {
         },
         links: [
           {
-            title: "Docs",
+            title: "Ecosystem",
             items: [
               {
-                label: "CorePass Connector",
-                to: "/category/corepass-connector",
+                label: "CorePass Homepage",
+                href: "https://corepass.net",
               },
               {
-                label: "CorePass Protocol",
-                to: "/category/corepass-protocol",
-              },
-              {
-                label: "Payto Protocol",
-                to: "/category/payto-protocol",
+                label: "Payto Money",
+                href: "https://payto.money",
               },
             ],
           },
@@ -192,10 +188,6 @@ const config: Config = {
               {
                 label: "GitHub",
                 href: "https://github.com/CorePass",
-              },
-              {
-                label: "Payto Money",
-                href: "https://payto.money",
               },
             ],
           },
