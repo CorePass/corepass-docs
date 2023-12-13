@@ -1,13 +1,13 @@
-import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
-import Link from '@docusaurus/Link';
-import Translate from '@docusaurus/Translate';
+import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
+import Link from "@docusaurus/Link";
+import Translate from "@docusaurus/Translate";
 import {
   useVersions,
   useLatestVersion,
-} from '@docusaurus/plugin-content-docs/client';
-import Layout from '@theme/Layout';
-import Heading from '@theme/Heading';
-import VersionsArchived from '@site/versionsArchived.json';
+} from "@docusaurus/plugin-content-docs/client";
+import Layout from "@theme/Layout";
+import Heading from "@theme/Heading";
+import VersionsArchived from "@site/versionsArchived.json";
 
 const docsPluginId = undefined;
 
@@ -29,27 +29,26 @@ function ReleaseNotesLabel() {
 
 export default function Version(): JSX.Element {
   const {
-    siteConfig: {organizationName, projectName},
+    siteConfig: { organizationName, projectName },
   } = useDocusaurusContext();
   const versions = useVersions(docsPluginId);
   const latestVersion = useLatestVersion(docsPluginId);
   const currentVersion = versions.find(
-    (version) => version.name === 'current',
+    (version) => version.name === "current"
   )!;
   const pastVersions = versions.filter(
-    (version) => version !== latestVersion && version.name !== 'current',
+    (version) => version !== latestVersion && version.name !== "current"
   );
   const repoUrl = `https://github.com/${organizationName!}/${projectName!}`;
 
   return (
     <Layout
       title="Versions"
-      description="CorePass Versions page listing all documented site versions">
+      description="CorePass Versions page listing all documented site versions"
+    >
       <main className="container margin-vert--lg">
         <Heading as="h1">
-          <Translate id="versionsPage.title">
-            CorePass versions
-          </Translate>
+          <Translate id="versionsPage.title">CorePass versions</Translate>
         </Heading>
 
         <div className="margin-bottom--lg">
@@ -68,7 +67,7 @@ export default function Version(): JSX.Element {
               <tr>
                 <th>{latestVersion.label}</th>
                 <td>
-                  <Link to={`${latestVersion.path}/intro`}>
+                  <Link to={`${latestVersion.path}`}>
                     <DocumentationLabel />
                   </Link>
                 </td>
@@ -95,7 +94,7 @@ export default function Version(): JSX.Element {
                 <tr>
                   <th>{currentVersion.label}</th>
                   <td>
-                    <Link to={`${currentVersion.path}/intro`}>
+                    <Link to={`${currentVersion.path}`}>
                       <DocumentationLabel />
                     </Link>
                   </td>
@@ -120,21 +119,23 @@ export default function Version(): JSX.Element {
             </p>
             <table>
               <tbody>
-                {pastVersions.map((version) => (
-                  <tr key={version.name}>
-                    <th>{version.label}</th>
-                    <td>
-                      <Link to={`${version.path}/intro`}>
-                        <DocumentationLabel />
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
+                {pastVersions.map((version) => {
+                  return (
+                    <tr key={version.name}>
+                      <th>{version.label}</th>
+                      <td>
+                        <Link to={`${version.path}/intro`}>
+                          <DocumentationLabel />
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
                 {VersionsArchivedList.map(([versionName, versionUrl]) => (
                   <tr key={versionName}>
                     <th>{versionName}</th>
                     <td>
-                      <Link to={versionUrl}>
+                      <Link to={versionUrl as string}>
                         <DocumentationLabel />
                       </Link>
                     </td>
