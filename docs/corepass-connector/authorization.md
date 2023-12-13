@@ -88,7 +88,7 @@ Sample request:
 
 ```bash
 curl --request POST \
-    --url https://auth-develop.corepassdev.eu/api/v1/blockchain/verified \
+    --url CONNECTOR_ADDRESS/api/v1/blockchain/verified \
     --header 'Content-Type: application/json' \
     --data '{
         "user":"ab22b1671b4f7ccc0b16a87514adde84513b6348232e",
@@ -127,7 +127,7 @@ Sample request:
 
 ```bash
 curl --request POST \
-  --url https://auth-develop.corepassdev.eu/api/v1/kyc/qrcode \
+  --url CONNECTOR_ADDRESS/api/v1/kyc/qrcode \
   --header 'Content-Type: application/json' \
   --data '{
     "user":"ab72a31c718d343b45e558099ec503087f734433785d",
@@ -342,7 +342,7 @@ Sample Request:
 
 ```bash
 curl --request POST \
-  --url https://auth-staging.corepassdev.eu/api/v1/kyc/status \
+  --url CONNECTOR_ADDRESS/api/v1/kyc/status \
   --header 'Content-Type: application/json' \
   --data '{
     "user":"ab29abcf6455efb099ebe820f50d67b96f540e935fa6",
@@ -372,7 +372,7 @@ Sample Request:
 
 ```bash
 curl --request POST \
-  --url https://auth-develop.corepassdev.eu/api/v1/kyc/all-statuses \
+  --url CONNECTOR_ADDRESS/api/v1/kyc/all-statuses \
   --header 'Content-Type: application/json' \
   --data '{
     "user":"ab148af5f9cdad10beddb05fbec4a3bef02577130e56",
