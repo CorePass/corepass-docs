@@ -35,7 +35,6 @@ const config: Config = {
   title: "CorePass Developer Hub",
   tagline: "CorePass Developer Hub",
   favicon: "img/favicon.ico",
-
   url: "https://docs.corepass.net",
 
   baseUrl,
@@ -64,6 +63,7 @@ const config: Config = {
           showLastUpdateAuthor: true,
           showLastUpdateTime: true,
           disableVersioning: isVersioningDisabled,
+
           lastVersion:
             isDev ||
             isVersioningDisabled ||
