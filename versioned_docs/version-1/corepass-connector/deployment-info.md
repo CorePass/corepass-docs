@@ -72,7 +72,7 @@ Here is the information and environment variables you need to deploy CorePass Co
 | RETRY_COUNT                       | 3                                                     | Number of retry in confirm and initiate      |
 | SENTRY_ATTACH_STACKTRACE          | false                                                 |                                              |
 | SENTRY_DEBUG                      | false                                                 |                                              |
-| SENTRY_DSN                        | https://SECRET@sentry.corepassdev.eu/6                | Sentry DSN for sending debug data            |
+| SENTRY_DSN                        | https://SECRET@sentryCONNECTOR_ADDRESS/6                | Sentry DSN for sending debug data            |
 | SENTRY_ENABLE_TRACING             | false                                                 |                                              |
 | SENTRY_SEND_DEFAULT_PII           | false                                                 |                                              |
 | SENTRY_TRACES_SAMPLE_RATE_PERCENT | 0                                                     |                                              |
@@ -94,7 +94,7 @@ Here is the information and environment variables you need to deploy CorePass Co
 | NATS_URL                          | nats://FQDN:4222                           | NATS connection URL                  |
 | SENTRY_ATTACH_STACKTRACE          | false                                      |                                      |
 | SENTRY_DEBUG                      | false                                      |                                      |
-| SENTRY_DSN                        | https://SECRET@sentry.corepassdev.eu/6     | Sentry DSN for sending debug data    |
+| SENTRY_DSN                        | https://SECRET@sentryCONNECTOR_ADDRESS/6     | Sentry DSN for sending debug data    |
 | SENTRY_ENABLE_TRACING             | false                                      |                                      |
 | SENTRY_SEND_DEFAULT_PII           | false                                      |                                      |
 | SENTRY_TRACES_SAMPLE_RATE_PERCENT | 0                                          |                                      |
@@ -115,7 +115,7 @@ Here is the information and environment variables you need to deploy CorePass Co
 | PRIVATE_SERVER_HTTP_ADDRESS         | 0.0.0.0:8081                           | Private interface for internal services |
 | SENTRY_ATTACH_STACKTRACE            | false                                  |                                         |
 | SENTRY_DEBUG                        | false                                  |                                         |
-| SENTRY_DSN                          | https://SECRET@sentry.corepassdev.eu/6 | Sentry DSN for sending debug data       |
+| SENTRY_DSN                          | https://SECRET@sentryCONNECTOR_ADDRESS/6 | Sentry DSN for sending debug data       |
 | SENTRY_ENABLE_TRACING               | false                                  |                                         |
 | SENTRY_SEND_DEFAULT_PII             | false                                  |                                         |
 | SENTRY_TRACES_SAMPLE_RATE_PERCENT   | 0                                      |                                         |
@@ -156,7 +156,7 @@ Here is the information and environment variables you need to deploy CorePass Co
 | REDIS_URI                            | redis://:PASSWORD@redis:6379/0                        | Redis URI (Universal Client)                 |
 | SENTRY_ATTACH_STACKTRACE             | false                                                 |                                              |
 | SENTRY_DEBUG                         | false                                                 |                                              |
-| SENTRY_DSN                           | https://SECRET@sentry.corepassdev.eu/6                | Sentry DSN for sending debug data            |
+| SENTRY_DSN                           | https://SECRET@sentryCONNECTOR_ADDRESS/6                | Sentry DSN for sending debug data            |
 | SENTRY_ENABLE_TRACING                | false                                                 |                                              |
 | SENTRY_SEND_DEFAULT_PII              | false                                                 |                                              |
 | SENTRY_TRACES_SAMPLE_RATE_PERCENT    | 0                                                     |                                              |
@@ -176,7 +176,7 @@ Here is the information and environment variables you need to deploy CorePass Co
 | SALT                              | SECRET                                 | Random string                          |
 | SENTRY_ATTACH_STACKTRACE          | false                                  |                                        |
 | SENTRY_DEBUG                      | false                                  |                                        |
-| SENTRY_DSN                        | https://SECRET@sentry.corepassdev.eu/6 | Sentry DSN for sending debug data      |
+| SENTRY_DSN                        | https://SECRET@sentryCONNECTOR_ADDRESS/6 | Sentry DSN for sending debug data      |
 | SENTRY_ENABLE_TRACING             | false                                  |                                        |
 | SENTRY_SEND_DEFAULT_PII           | false                                  |                                        |
 | SENTRY_TRACES_SAMPLE_RATE_PERCENT | 0                                      |                                        |
