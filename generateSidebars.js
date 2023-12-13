@@ -18,7 +18,7 @@ function generateSidebarForVersion(versionDir) {
                 .map(file => path.join(category, file.replace(/\.mdx?$/, '')));
 
             if (docs.length > 0) {
-                sidebar[category] = docs;
+                sidebar[category] = docs.map(item=>item.replace(/\\/g, '/'));
             }
         }
     });
