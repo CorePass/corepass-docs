@@ -10,6 +10,10 @@
 
 # Misc
 .DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+.Trash
 .env.local
 .env.development.local
 .env.test.local
@@ -18,3 +22,24 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# yarn v2
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# lock files (excluding will cause npm ci inaccessible)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
