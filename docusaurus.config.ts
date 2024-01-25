@@ -131,10 +131,14 @@ const config: Config = {
       { name: "theme-color", content: "#1362d5"},
       { name: "apple-mobile-web-app-capable", content: "yes"},
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent"},
+    ],
+    headTags: [
       {
         tagName: "link",
-        rel: "manifest",
-        href: "/manifest.json",
+        attributes: {
+          rel: "manifest",
+          href: "/manifest.json",
+        },
       },
     ],
     colorMode: {
