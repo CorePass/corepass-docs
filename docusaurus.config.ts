@@ -128,6 +128,14 @@ const config: Config = {
         content:
           "corepass, developer, development, hub, core, documentation, docs, core coin, core token, connector, protocol",
       },
+      { name: "theme-color", content: "#1362d5"},
+      { name: "apple-mobile-web-app-capable", content: "yes"},
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent"},
+      {
+        tagName: "link",
+        rel: "manifest",
+        href: "/manifest.json",
+      },
     ],
     colorMode: {
       defaultMode: "light",
@@ -193,7 +201,7 @@ const config: Config = {
             },
             {
               label: "App Store",
-              href: "https://testflight.apple.com/join/QQmMqKcj",
+              href: "https://apps.apple.com/app/corepass-id/id1644928641",
             },
             {
               label: "GitHub",
@@ -217,7 +225,7 @@ const config: Config = {
               href: "https://www.linkedin.com/company/corepass",
             },
             {
-              label: "Core◆Talk",
+              label: "Core ◆ Talk",
               href: "https://coretalk.space/@corepass",
             },
           ],
