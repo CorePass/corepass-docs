@@ -9,5 +9,5 @@ CorePass revolutionizes digital identity management by giving users full control
 
 Get started by **downloading CorePass for android or iOS**.
 
-- [Download for Android](https://play.google.com/store/apps/details?id=net.corepass.app&hl=en&gl=US)
-- [Download for iOS](https://testflight.apple.com/join/QQmMqKcj)
+- [Download for Android](https://play.google.com/store/apps/details?id=net.corepass.app)
+- [Download for iOS](https://apps.apple.com/app/corepass-id/id1644928641)

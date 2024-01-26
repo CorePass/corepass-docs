@@ -42,6 +42,7 @@ const config: Config = {
   projectName: "CorePass",
 
   onBrokenLinks: "throw",
+  onBrokenAnchors: "throw",
   onBrokenMarkdownLinks: "warn",
 
   i18n: {
@@ -140,6 +141,26 @@ const config: Config = {
           href: "/manifest.json",
         },
       },
+      {
+        tagName: "meta",
+        attributes: {
+          name: "generator",
+          content: "CorePass Generator",
+        },
+      },
+      {
+        tagName: 'script',
+        attributes: {
+          type: 'application/ld+json',
+        },
+        innerHTML: JSON.stringify({
+          '@context': 'https://schema.org/',
+          '@type': 'Organization',
+          name: 'CorePass',
+          url: 'https://corepass.net',
+          logo: 'https://docs.corepass.net/img/logo.svg',
+        }),
+      },
     ],
     colorMode: {
       defaultMode: "light",
@@ -229,7 +250,7 @@ const config: Config = {
               href: "https://www.linkedin.com/company/corepass",
             },
             {
-              label: "Core ◆ Talk",
+              label: "Core◆Talk",
               href: "https://coretalk.space/@corepass",
             },
           ],
