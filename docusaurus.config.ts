@@ -90,12 +90,17 @@ const config: Config = {
             },
             ...versions.reduce((acc, version) => {
               if (isPrerelease(version)) {
-                return acc;
+                return {
+                  ...acc,
+                  [version]: {
+                    label: `CP v. ${version}`,
+                  },
+                };
               }
               return {
                 ...acc,
                 [version]: {
-                  label: `CP ver. ${version}`,
+                  label: `CP v. ${version}`,
                 },
               };
             }, {}),
