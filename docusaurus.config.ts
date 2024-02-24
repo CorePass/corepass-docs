@@ -2,6 +2,12 @@ import { themes as prismThemes } from "prism-react-renderer";
 import type { Config } from "@docusaurus/types";
 import type * as Preset from "@docusaurus/preset-classic";
 
+import fediverseUser from "remark-fediverse-user";
+import remarkCorepass from "remark-corepass";
+import remarkCorebc from "remark-corebc";
+import math from "remark-math";
+import katex from "rehype-katex";
+
 import versions from "./versions.json";
 
 const isDev = process.env.NODE_ENV === "development";
@@ -105,6 +111,21 @@ const config: Config = {
               };
             }, {}),
           },
+          remarkPlugins: [
+            math,
+            fediverseUser,
+            remarkCorepass,
+            remarkCorebc,
+          ],
+          rehypePlugins: [
+            [
+              katex,
+              {
+                output: 'mathml',
+                strict: 'newLineInDisplayMode',
+              },
+            ],
+          ],
         },
         blog: false,
         theme: {
