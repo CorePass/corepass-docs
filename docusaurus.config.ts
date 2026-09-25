@@ -1,4 +1,3 @@
-import { themes as prismThemes } from "prism-react-renderer";
 import type { Config } from "@docusaurus/types";
 import type * as Preset from "@docusaurus/preset-classic";
 
@@ -10,6 +9,7 @@ import math from "remark-math";
 import katex from "rehype-katex";
 
 import versions from "./versions.json";
+import { corepassDark, corepassLight } from "./src/prism/corepass";
 
 const isDev = process.env.NODE_ENV === "development";
 const isVersioningDisabled = !!process.env.DISABLE_VERSIONING;
@@ -50,7 +50,12 @@ const config: Config = {
 
   onBrokenLinks: "throw",
   onBrokenAnchors: "throw",
-  onBrokenMarkdownLinks: "warn",
+
+  markdown: {
+    hooks: {
+      onBrokenMarkdownLinks: "warn",
+    },
+  },
 
   i18n: {
     defaultLocale: "en",
@@ -136,7 +141,47 @@ const config: Config = {
       } satisfies Preset.Options,
     ],
   ],
+  plugins: [
+    [
+      "@docusaurus/plugin-client-redirects",
+      {
+        redirects: [
+          // Version 2 folded the old authorization page into authentication.
+          {
+            from: "/corepass-connector/authorization",
+            to: "/corepass-connector/authentication",
+          },
+        ],
+      },
+    ],
+  ],
   headTags: [
+    {
+      tagName: "link",
+      attributes: {
+        rel: "preload",
+        href: "/fonts/inter-variable-latin.woff2",
+        as: "font",
+        type: "font/woff2",
+        crossorigin: "anonymous",
+      },
+    },
+    {
+      tagName: "meta",
+      attributes: {
+        name: "theme-color",
+        content: "#ffffff",
+        media: "(prefers-color-scheme: light)",
+      },
+    },
+    {
+      tagName: "meta",
+      attributes: {
+        name: "theme-color",
+        content: "#020c16",
+        media: "(prefers-color-scheme: dark)",
+      },
+    },
     {
       tagName: "link",
       attributes: {
@@ -186,7 +231,6 @@ const config: Config = {
         content:
           "corepass, developer, development, hub, core, documentation, docs, core coin, core token, connector, protocol",
       },
-      { name: "theme-color", content: "#1362d5"},
       { name: "apple-mobile-web-app-capable", content: "yes"},
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent"},
     ],
@@ -195,16 +239,54 @@ const config: Config = {
       disableSwitch: false,
       respectPrefersColorScheme: true,
     },
+    docs: {
+      sidebar: {
+        hideable: true,
+      },
+    },
     navbar: {
-      title: "CorePass Dev Hub",
+      title: "Developer Hub",
+      hideOnScroll: false,
       logo: {
         alt: "CorePass",
-        src: "img/logo.png",
+        src: "img/brand/logo-corepass.svg",
+        srcDark: "img/brand/logo-corepass-dark.svg",
+        width: 89,
+        height: 28,
       },
       items: [
         {
-          type: "docsVersionDropdown",
+          type: "doc",
+          docId: "intro",
+          label: "Get started",
           position: "left",
+        },
+        {
+          type: "doc",
+          docId: "corepass-connector/what-is-connector",
+          label: "Connector",
+          position: "left",
+        },
+        {
+          type: "dropdown",
+          label: "Protocols",
+          position: "left",
+          items: [
+            {
+              type: "doc",
+              docId: "corepass-protocol/corepass-protocol",
+              label: "CorePass Protocol",
+            },
+            {
+              type: "doc",
+              docId: "payto-protocol/payto-protocol",
+              label: "PayTo Protocol",
+            },
+          ],
+        },
+        {
+          type: "docsVersionDropdown",
+          position: "right",
           dropdownActiveClassDisabled: true,
           dropdownItemsAfter: [
             {
@@ -221,32 +303,65 @@ const config: Config = {
           href: "https://github.com/CorePass",
           position: "right",
           className: "header-github-link",
-          "aria-label": "GitHub repository",
+          "aria-label": "CorePass on GitHub",
         },
       ],
     },
     footer: {
-      style: "dark",
+      style: "light",
       logo: {
         alt: "CorePass",
-        src: "img/logo.png",
+        src: "img/brand/logo-corepass.svg",
+        srcDark: "img/brand/logo-corepass-dark.svg",
+        href: "https://corepass.net",
+        width: 89,
+        height: 28,
       },
       links: [
         {
-          title: "Ecosystem",
+          title: "Documentation",
           items: [
             {
-              label: "CorePass Homepage",
-              href: "https://corepass.net",
+              label: "Get started",
+              to: "/intro",
             },
             {
-              label: "Payto Money",
-              href: "https://payto.money",
+              label: "CorePass Connector",
+              to: "/corepass-connector/what-is-connector",
+            },
+            {
+              label: "CorePass Protocol",
+              to: "/corepass-protocol/",
+            },
+            {
+              label: "PayTo Protocol",
+              to: "/payto-protocol/",
             },
           ],
         },
         {
-          title: "Resources",
+          title: "Ecosystem",
+          items: [
+            {
+              label: "CorePass",
+              href: "https://corepass.net",
+            },
+            {
+              label: "CorePass Connector",
+              href: "https://connector.corepass.net",
+            },
+            {
+              label: "PayTo Money",
+              href: "https://payto.money",
+            },
+            {
+              label: "GitHub",
+              href: "https://github.com/CorePass",
+            },
+          ],
+        },
+        {
+          title: "Get the app",
           items: [
             {
               label: "Google Play",
@@ -255,10 +370,6 @@ const config: Config = {
             {
               label: "App Store",
               href: "https://apps.apple.com/app/corepass-id/id1644928641",
-            },
-            {
-              label: "GitHub",
-              href: "https://github.com/CorePass",
             },
           ],
         },
@@ -287,8 +398,9 @@ const config: Config = {
       copyright: `Copyright © 2020-${new Date().getFullYear()} CorePass.`,
     },
     prism: {
-      theme: prismThemes.github,
-      darkTheme: prismThemes.dracula,
+      theme: corepassLight,
+      darkTheme: corepassDark,
+      additionalLanguages: ["bash", "diff", "http", "java", "php"],
     },
   } satisfies Preset.ThemeConfig,
 };
