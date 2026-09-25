@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
 import Link from "@docusaurus/Link";
 import Translate from "@docusaurus/Translate";
@@ -27,7 +28,7 @@ function ReleaseNotesLabel() {
   );
 }
 
-export default function Version(): JSX.Element {
+export default function Version(): ReactNode {
   const {
     siteConfig: { organizationName, projectName },
   } = useDocusaurusContext();

@@ -1,0 +1,10 @@
+{
+  "label": "KYC (personal identity)",
+  "position": 5,
+  "link": {
+    "type": "generated-index",
+    "title": "KYC — personal identity data",
+    "description": "Request verified identity data (name, date of birth, documents, address, contact details) from a logged-in CorePass user."
+  },
+  "collapsed": false
+}
