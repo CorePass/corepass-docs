@@ -14,7 +14,7 @@ These lookups aren't limited to businesses your organization already works with.
 `GET /api/v1/kyb/status/{walletAddress}`
 
 ```bash title="Request"
-curl https://auth.corepass.net/api/v1/kyb/status/ab998877… \
+curl https://api.corepass.net/api/v1/kyb/status/ab998877… \
   -H "Authorization: <YOUR_API_KEY>"
 ```
 
@@ -37,7 +37,7 @@ curl https://auth.corepass.net/api/v1/kyb/status/ab998877… \
 Returns everything from `status`, plus `profilePictureUrl`, `teamMemberCount` and `governanceRules`:
 
 ```bash title="Request"
-curl https://auth.corepass.net/api/v1/kyb/verify/ab998877… \
+curl https://api.corepass.net/api/v1/kyb/verify/ab998877… \
   -H "Authorization: <YOUR_API_KEY>"
 ```
 
@@ -55,7 +55,7 @@ curl https://auth.corepass.net/api/v1/kyb/verify/ab998877… \
 `GET /api/v1/kyb/members/{walletAddress}`
 
 ```bash title="Request"
-curl https://auth.corepass.net/api/v1/kyb/members/ab998877… \
+curl https://api.corepass.net/api/v1/kyb/members/ab998877… \
   -H "Authorization: <YOUR_API_KEY>"
 ```
 

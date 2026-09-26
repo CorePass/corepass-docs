@@ -22,7 +22,7 @@ If your balance can't cover a request, it is refused up front with `402 insuffic
 Each field belongs to a pricing **tier**. The current tiers and prices are available from the API:
 
 ```bash title="Field vocabulary, PII flags and tiers"
-curl https://auth.corepass.net/api/v1/kyb/pricing \
+curl https://api.corepass.net/api/v1/kyb/pricing \
   -H "Authorization: <YOUR_API_KEY>"
 ```
 
@@ -31,7 +31,7 @@ A price line looks like `{"field": "BUSINESS_LEGAL_NAME", "tier": "A", "cents": 
 ## Balance and charges
 
 ```bash title="Balance"
-curl https://auth.corepass.net/api/v1/kyb/billing/account \
+curl https://api.corepass.net/api/v1/kyb/billing/account \
   -H "Authorization: <YOUR_API_KEY>"
 ```
 
@@ -47,7 +47,7 @@ curl https://auth.corepass.net/api/v1/kyb/billing/account \
 ```
 
 ```bash title="Charge history"
-curl https://auth.corepass.net/api/v1/kyb/billing/charges \
+curl https://api.corepass.net/api/v1/kyb/billing/charges \
   -H "Authorization: <YOUR_API_KEY>"
 ```
 

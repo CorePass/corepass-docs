@@ -11,7 +11,8 @@ CorePass Connector is a **hosted service**. You don't deploy, configure or opera
 
 | Surface | Host | Used for |
 | --- | --- | --- |
-| Public API | `https://auth.corepass.net` | OAuth 2.0 / OIDC, KYC and KYB endpoints, JWKS. |
+| Auth and KYC API | `https://auth.corepass.net` | OAuth 2.0 / OIDC, login JWKS, KYC endpoints. |
+| KYB merchant API | `https://api.corepass.net` | KYB endpoints and `/.well-known/kyb-jwks.json`. |
 | Developer dashboard | Provided by your CorePass contact | One-time setup: organization, domains, OAuth clients, API keys, KYC packages, KYB billing, webhook history. |
 
 :::tip Separate your environments

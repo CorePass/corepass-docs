@@ -16,7 +16,7 @@ Use this when you already know the business's wallet address, for example from [
 `POST /api/v1/kyb/data-requests`
 
 ```bash title="Request"
-curl -X POST https://auth.corepass.net/api/v1/kyb/data-requests \
+curl -X POST https://api.corepass.net/api/v1/kyb/data-requests \
   -H "Authorization: <YOUR_API_KEY>" \
   -H "Idempotency-Key: order-48291-kyb" \
   -H "Content-Type: application/json" \
@@ -64,7 +64,7 @@ Use an **offer** when you don't know the business's wallet address, for example 
 `POST /api/v1/kyb/data-requests/offers`
 
 ```bash title="Request"
-curl -X POST https://auth.corepass.net/api/v1/kyb/data-requests/offers \
+curl -X POST https://api.corepass.net/api/v1/kyb/data-requests/offers \
   -H "Authorization: <YOUR_API_KEY>" \
   -H "Idempotency-Key: till-3-2026-09-17-0001" \
   -H "Content-Type: application/json" \
@@ -88,7 +88,7 @@ If you retry without a key, a second QR code is created, and a claim on it would
 Show `qrcode` on screen, or `link` as a button on mobile. A member scans it and chooses **which of their businesses** it applies to. The data request is created at that moment, so you learn which business claimed it only afterwards, from the `kyb.data_request.pending_approval` [webhook](./webhooks.md#event-catalogue) (it carries `offer_id`) or by polling the offer:
 
 ```bash title="Poll an offer"
-curl https://auth.corepass.net/api/v1/kyb/data-requests/offers/<offerId> \
+curl https://api.corepass.net/api/v1/kyb/data-requests/offers/<offerId> \
   -H "Authorization: <YOUR_API_KEY>"
 ```
 
@@ -117,7 +117,7 @@ Cancel only works while a request is `pending_approval`. After a release, the da
 `POST /api/v1/kyb/data-requests/quote`
 
 ```bash title="Request"
-curl -X POST https://auth.corepass.net/api/v1/kyb/data-requests/quote \
+curl -X POST https://api.corepass.net/api/v1/kyb/data-requests/quote \
   -H "Authorization: <YOUR_API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{"fields": ["BUSINESS_LEGAL_NAME", "BUSINESS_REGISTRATION_NUMBER"]}'

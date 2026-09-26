@@ -19,7 +19,7 @@ You pass the expected `issuer` and `audience` in (see [below](#issuer-and-audien
 | `iss` | `https://corepass.net/kyb`. This is deliberately different from the login issuer, so a login token can never pass as an attestation. |
 | `aud` | Your **client domain UUID**: the ID of the registered domain your API key belongs to ([Dashboard setup](../dashboard-setup.md#register-domain)). |
 
-The key set at `https://auth.corepass.net/.well-known/kyb-jwks.json` also publishes the current `issuer` and the required `typ` next to `keys`, so you can read them from there instead of hard-coding them. Cache the key set for about 5 minutes and refetch when you see an unknown `kid`.
+The key set at `https://api.corepass.net/.well-known/kyb-jwks.json` also publishes the current `issuer` and the required `typ` next to `keys`, so you can read them from there instead of hard-coding them. Cache the key set for about 5 minutes and refetch when you see an unknown `kid`.
 
 ## Reference code
 
@@ -47,7 +47,7 @@ import (
 	"time"
 )
 
-const jwksURL = "https://auth.corepass.net/.well-known/kyb-jwks.json"
+const jwksURL = "https://api.corepass.net/.well-known/kyb-jwks.json"
 
 type Envelope struct {
 	Event       string          `json:"event"`
@@ -180,7 +180,7 @@ Uses [`jose`](https://github.com/panva/jose), the same library as in the [login]
 import { jwtVerify, createRemoteJWKSet, decodeProtectedHeader } from "jose";
 
 const JWKS = createRemoteJWKSet(
-  new URL("https://auth.corepass.net/.well-known/kyb-jwks.json"),
+  new URL("https://api.corepass.net/.well-known/kyb-jwks.json"),
 );
 
 export async function verifyAttestation(envelope, { issuer, audience }) {
