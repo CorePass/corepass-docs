@@ -69,7 +69,7 @@ A call without the required entitlement fails with `403 kyb_not_entitled`, `403 
 KYC takes a `callback` URL on every request. KYB is different: you **register one HTTPS endpoint per client domain, once**, and every request delivers to it.
 
 ```bash title="Register (or replace) the endpoint"
-curl -X PUT https://auth.corepass.net/api/v1/kyb/webhook-endpoint \
+curl -X PUT https://api.corepass.net/api/v1/kyb/webhook-endpoint \
   -H "Authorization: <YOUR_API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{"url": "https://merchant.example/kyb/webhooks"}'

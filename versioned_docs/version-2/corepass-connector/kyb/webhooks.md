@@ -81,7 +81,7 @@ Run them in this order. Reference code is in [Verifying attestations](./verifyin
 
 1. The JWT `typ` is `kyb-attestation+jwt`. Check it **before** the signature, so a token of the wrong kind (such as a login token) is rejected right away.
 2. `alg` is `RS256`. Hard-code it and never read the algorithm from the header.
-3. The signature verifies against the key named by `kid`, from `https://auth.corepass.net/.well-known/kyb-jwks.json`.
+3. The signature verifies against the key named by `kid`, from `https://api.corepass.net/.well-known/kyb-jwks.json`.
 4. `iss` is `https://corepass.net/kyb`, `aud` is **your client domain UUID**, and `exp` / `iat` are valid, with a small clock-skew leeway. See [Issuer and audience](./verifying-attestations.md#issuer-and-audience).
 5. The envelope's `event_id`, `stream_id` and `seq` equal the **signed** copies inside the claims. If they don't, something between CorePass and you relabelled the delivery.
 
@@ -112,7 +112,7 @@ If you also check the header (`t=<unix>,v1=<hex hmac>,kv=<secret version>`):
 If you missed a webhook and don't want to wait for redelivery, pull the release directly:
 
 ```bash title="Pull a release"
-curl https://auth.corepass.net/api/v1/kyb/data-requests/<requestId>/release \
+curl https://api.corepass.net/api/v1/kyb/data-requests/<requestId>/release \
   -H "Authorization: <YOUR_API_KEY>"
 ```
 

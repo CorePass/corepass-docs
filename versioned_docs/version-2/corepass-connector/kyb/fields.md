@@ -11,7 +11,7 @@ Name these fields in the `fields` / `optionalFields` of a [data request](./data-
 The current vocabulary, including **which fields are PII** and **which pricing tier** each belongs to, is always available from the API:
 
 ```bash
-curl https://auth.corepass.net/api/v1/kyb/pricing -H "Authorization: <YOUR_API_KEY>"
+curl https://api.corepass.net/api/v1/kyb/pricing -H "Authorization: <YOUR_API_KEY>"
 ```
 :::
 

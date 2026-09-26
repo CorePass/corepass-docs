@@ -5,7 +5,10 @@ sidebar_position: 7
 description: Every CorePass Connector endpoint in one place — OAuth/OIDC, KYC and KYB — with authentication, conventions and links to the detailed pages.
 ---
 
-Base URL: **`https://auth.corepass.net`**
+Base URLs:
+
+- **`https://auth.corepass.net`**: OAuth 2.0 / OIDC and KYC
+- **`https://api.corepass.net`**: KYB merchant API and `/.well-known/kyb-jwks.json`
 
 ## Authentication
 
@@ -42,7 +45,7 @@ Webhooks: [KYC webhooks](./kyc/webhooks.md) · Fields: [KYC fields](./kyc/fields
 
 ## KYB
 
-Errors use `{ "success": false, "error": { "code": …, "reason": "…", "message": "…" } }`. See [KYB error codes](./kyb/reference.md#error-responses).
+All KYB paths are on `https://api.corepass.net`. Errors use `{ "success": false, "error": { "code": …, "reason": "…", "message": "…" } }`. See [KYB error codes](./kyb/reference.md#error-responses).
 
 ### Webhook endpoint (`kyb:read`)
 

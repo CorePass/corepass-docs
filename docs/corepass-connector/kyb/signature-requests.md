@@ -12,7 +12,7 @@ A **signature request** asks a business to sign a message or an EIP-712 typed-da
 `POST /api/v1/kyb/signature-requests`
 
 ```bash title="Request"
-curl -X POST https://auth.corepass.net/api/v1/kyb/signature-requests \
+curl -X POST https://api.corepass.net/api/v1/kyb/signature-requests \
   -H "Authorization: <YOUR_API_KEY>" \
   -H "Idempotency-Key: terms-v3-acme" \
   -H "Content-Type: application/json" \
@@ -66,7 +66,7 @@ As with data requests, you can create a signature request as a QR-code offer: `P
 ## Read the result
 
 ```bash title="Request"
-curl https://auth.corepass.net/api/v1/kyb/signature-requests/01J8Z4M2…/signature \
+curl https://api.corepass.net/api/v1/kyb/signature-requests/01J8Z4M2…/signature \
   -H "Authorization: <YOUR_API_KEY>"
 ```
 
