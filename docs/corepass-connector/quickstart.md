@@ -27,7 +27,7 @@ In the CorePass developer dashboard ([details](./dashboard-setup.md)):
 4. Register your application's **domain** (**Applications**).
 5. Create an **OAuth client**. Note the `oauth2ClientID` and `secret`.
 6. Generate an **API key** (**ApiKeys**).
-7. For KYC: buy a package on **Packages** and copy its **Source key** and **Webhook signing key**.
+7. For KYC: get the `kyc:data-request` entitlement from your CorePass contact and top up CHF credit on **Billing**.
 
 ## 2. Add "Login with CorePass"
 
@@ -64,31 +64,27 @@ Verify the JWT against `https://auth.corepass.net/.well-known/jwks.json` and rea
 
 From your backend, with your API key:
 
-```bash title="1 — Is the field verified?"
-curl -G "https://auth.corepass.net/api/v1/blockchain/verified" \
-  -H "Authorization: <YOUR_API_KEY>" \
-  --data-urlencode "user=<USER_COREID>" \
-  --data-urlencode "items=EMAIL"
-```
-
-```bash title="2 — Create the request and get a QR code / deep link"
-curl -X POST https://auth.corepass.net/api/v2/kyc/qrcode \
+```bash title="1 — Register your KYC webhook endpoint (once) and store the secret"
+curl -X PUT https://api.corepass.net/api/v3/kyc/webhook-endpoint \
   -H "Authorization: <YOUR_API_KEY>" \
   -H "Content-Type: application/json" \
-  -d '{
-    "user": "<USER_COREID>",
-    "sourceKey": "<YOUR_SOURCE_KEY>",
-    "callback": "https://api.example.com/corepass/callback",
-    "expiration": <unix seconds, 5–15 minutes from now>
-  }'
+  -d '{"url": "https://api.example.com/corepass/kyc-webhooks"}'
 ```
 
-Show the returned `qrcode` to desktop users and `link` to mobile users. Your `callback` receives `status.updated` events and, once the user approves, a `data.transferred` event with the data. Verify the `Corepass-Signature` header with the package's webhook signing key and return HTTP `200`. [Full guide →](./kyc/overview.md)
+```bash title="2 — Create a QR code offer"
+curl -X POST https://api.corepass.net/api/v3/kyc/data-requests/offers \
+  -H "Authorization: <YOUR_API_KEY>" \
+  -H "Idempotency-Key: <unique per attempt>" \
+  -H "Content-Type: application/json" \
+  -d '{"fields": ["NAME_PARENT_FIELD", "EMAIL"], "purpose": "Create your account"}'
+```
+
+Show the returned `qrcode` to desktop users and `link` to mobile users. If you already know the user's CoreID from login, `POST /api/v3/kyc/data-requests` with `coreId` pushes the request to their phone instead. Once the user approves, your endpoint receives `kyc.data_request.released` with a signed attestation. [Verify it](./kyc/verifying-attestations.md), store the values and return HTTP `200`. [Full guide →](./kyc/overview.md)
 
 ## 4. (Optional) Business identity — KYB
 
 KYB reuses the same OAuth client and API key. You also need **entitlements** granted by CorePass and a registered **webhook endpoint**. [Start here →](./kyb/overview.md)
 
 :::warning Keep secrets on the server
-The OAuth client secret, the API key and the KYB webhook secret must never be shipped to a browser or mobile app. All KYC and KYB endpoints are server-to-server.
+The OAuth client secret, the API key and the KYC and KYB webhook secrets must never be shipped to a browser or mobile app. All KYC and KYB endpoints are server-to-server.
 :::

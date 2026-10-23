@@ -31,17 +31,29 @@ Details: [Login (OAuth 2.0 / OIDC)](./authentication.md).
 
 ## KYC
 
-Responses are wrapped in `{ "data": …, "message": "…", "success": true }`. Errors are `{ "success": false, "error": { "code": …, "message": "…" } }`.
+All KYC paths are on `https://api.corepass.net` and require the `kyc:data-request` entitlement. Responses are wrapped in `{ "success": true, "data": … }`. Errors are `{ "success": false, "error": { "code": …, "reason": "…", "message": "…" } }`. See [KYC error codes](./kyc/statuses.md#error-reasons).
 
 | Method | Path | Description |
 | --- | --- | --- |
-| `GET` | `/api/v1/blockchain/verified?user=…&items=…` | [Which requested fields the user has verified.](./kyc/api.md#check-which-fields-are-verified) |
-| `POST` | `/api/v2/kyc/qrcode` | [Create a KYC request and get a QR code / deep link.](./kyc/api.md#generate-a-kyc-qr-code) |
-| `GET` | `/api/v2/kyc/status?referenceKey=…` | [Latest status of an order.](./kyc/api.md#poll-the-latest-status) |
-| `GET` | `/api/v2/kyc/all-statuses?referenceKey=…` | [Full status history of an order.](./kyc/api.md#fetch-the-full-status-history) |
-| `POST` | `/api/v1/blockchain/valid` | [Re-validate stored field values.](./kyc/api.md#check-that-stored-data-is-still-valid) |
+| `GET` | `/api/v3/kyc/verified?coreId=…&fields=…` | [Which fields a user holds verified.](./kyc/api.md#check-which-fields-are-verified) |
+| `POST` | `/api/v3/kyc/data-requests` | [Create a request by CoreID (pushed to the phone).](./kyc/api.md#create-a-request-by-coreid) |
+| `POST` | `/api/v3/kyc/data-requests/offers` | [Create a QR code / deep link offer.](./kyc/api.md#create-an-offer-qr-code) |
+| `GET` | `/api/v3/kyc/data-requests/offers/{offerId}` | [Poll an offer.](./kyc/api.md#poll-or-cancel-an-offer) |
+| `POST` | `/api/v3/kyc/data-requests/offers/{offerId}/cancel` | [Cancel an open offer.](./kyc/api.md#poll-or-cancel-an-offer) |
+| `GET` | `/api/v3/kyc/data-requests`, `/api/v3/kyc/data-requests/{requestId}` | [List or read requests.](./kyc/api.md#read-requests) |
+| `POST` | `/api/v3/kyc/data-requests/{requestId}/cancel` | [Cancel a pending request.](./kyc/api.md#cancel-a-request) |
+| `GET` | `/api/v3/kyc/data-requests/{requestId}/release` | [Pull the signed attestation.](./kyc/api.md#pull-the-release) |
+| `GET` | `/api/v3/kyc/documents/{requestId}/{fieldName}` | [Fetch a released document image.](./kyc/api.md#fetch-a-document-image) |
+| `GET` | `/api/v3/kyc/data-requests/{requestId}/deliveries`, `/events`; `POST …/redeliver` | [Delivery log, event stream, redelivery.](./kyc/api.md#delivery-log-events-and-redelivery) |
+| `POST` | `/api/v3/kyc/data-requests/quote` | [Price a field list.](./kyc/api.md#quote-a-price) |
+| `GET` | `/api/v3/kyc/pricing` | [Per-field CHF prices.](./kyc/api.md#pricing) |
+| `PUT`, `GET` | `/api/v3/kyc/webhook-endpoint` | [Register or read the webhook endpoint.](./kyc/api.md#webhook-endpoint) |
+| `POST` | `/api/v3/kyc/webhook-endpoint/rotate-secret`, `/reactivate` | [Rotate the secret, clear a quarantine.](./kyc/api.md#webhook-endpoint) |
+| `GET` | `/api/v3/kyc/billing/charges` | [KYC charges.](./kyc/api.md#charges) |
+| `GET` | `/.well-known/kyc-jwks.json` | [Public keys for KYC attestations.](./kyc/api.md#jwks) |
+| `GET` | `/api/v1/blockchain/verified?user=…&items=…` | Older pre-check, kept unchanged. |
 
-Webhooks: [KYC webhooks](./kyc/webhooks.md) · Fields: [KYC fields](./kyc/fields.md) · Statuses: [KYC status values](./kyc/statuses.md)
+Webhooks: [KYC webhooks](./kyc/webhooks.md) · Attestations: [Verifying attestations](./kyc/verifying-attestations.md) · Fields: [KYC fields](./kyc/fields.md) · Statuses: [KYC statuses & error codes](./kyc/statuses.md) · Moving from v2: [Migration guide](./kyc/migration-from-v2.md)
 
 ## KYB
 

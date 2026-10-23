@@ -231,7 +231,7 @@ curl https://auth.corepass.net/userinfo \
 Check the `iss` claim against the `issuer` value from the discovery document (`/.well-known/openid-configuration`) rather than a hard-coded string.
 :::
 
-Store the CoreID as the user's stable identifier. It is also the `user` value in every [KYC request](./kyc/overview.md).
+Store the CoreID as the user's stable identifier. It is also the `coreId` value of a [KYC request by CoreID](./kyc/api.md#create-a-request-by-coreid).
 
 ## Sign-up vs. login
 

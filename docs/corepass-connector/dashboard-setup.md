@@ -64,25 +64,18 @@ Authorization: <YOUR_API_KEY>
 The API key is sent **as-is**, with **no** `Bearer ` prefix. It is not the user's OAuth access token. Treat it like a password. To rotate it, create a new key, deploy it, then delete the old one.
 :::
 
-## 7. Buy a KYC package: Source Key and webhook signing key {#source-key}
+## 7. KYC: entitlement, webhook endpoint and credit {#source-key}
 
-KYC orders are created against a **package**. Open **Packages**, choose a package and complete the purchase. A package either has a fixed set of KYC fields that you select when buying it, or lets you name the fields on each request ([Choosing fields](./kyc/overview.md#choosing-fields)).
+KYC data requests no longer use packages or Source Keys. Before your first request:
 
-Each package shows two credentials:
+- Ask your CorePass contact for the `kyc:data-request` [entitlement](./kyc/overview.md#entitlements).
+- Register your KYC webhook endpoint with the API ([how](./kyc/overview.md#register-a-webhook-endpoint)), or in the dashboard's **KYC** section, and store its secret.
+- Top up prepaid CHF credit in the dashboard's **Billing** page. KYC and KYB draw on the same balance.
 
-| Credential | Used for |
-| --- | --- |
-| **Source key** | An opaque string that identifies the package. Send it unchanged as `sourceKey` in every [`POST /api/v2/kyc/qrcode`](./kyc/api.md#generate-a-kyc-qr-code) call. |
-| **Webhook signing key** | The HMAC key that signs the `Corepass-Signature` header of every KYC webhook for orders created with this package. See [Verifying the signature](./kyc/webhooks.md#verifying-the-signature). |
-
-:::warning
-Both values are credentials. Keep them on your server. If you use several packages, keep a signing key per Source Key.
-:::
-
-:::note
-KYB does **not** use Source Keys or packages. Access is controlled by entitlements and billed from a prepaid credit balance. See [KYB overview](./kyb/overview.md).
+:::note Existing packages
+KYC packages bought under v2 were converted into CHF credit. See [Packages become credit](./kyc/migration-from-v2.md#packages-become-credit).
 :::
 
 ## 8. Inspect webhook deliveries {#webhook-history}
 
-The **Webhook** page shows every webhook call the Connector made to your KYC callback URLs, with status codes, response bodies and timestamps. Check it first when you debug callback handling. KYC callback URLs are not configured here: you pass them per request in `callback`.
+The dashboard's **KYC** section shows each data request with its webhook delivery attempts, status codes and timestamps. Check it first when you debug your receiver. The same log is available from the API: [`GET /api/v3/kyc/data-requests/{requestId}/deliveries`](./kyc/api.md#delivery-log-events-and-redelivery).

@@ -12,7 +12,7 @@ description: CorePass Connector is the hosted service that lets your application
 | Capability | What it does | Where to start |
 | --- | --- | --- |
 | **CorePass Login** | Users sign in by scanning a QR code with the CorePass app. Standard OAuth 2.0 / OpenID Connect; you receive a JWT whose `sub` claim is the user's **CoreID** (their blockchain address). | [Login (OAuth 2.0 / OIDC)](./authentication.md) |
-| **KYC — personal identity** | Once a user is logged in, request specific verified fields (name, date of birth, document number, address, email, …). The user approves on their phone and the data is delivered to your webhook. | [KYC overview](./kyc/overview.md) |
+| **KYC — personal identity** | Once a user is logged in, request specific verified fields (name, date of birth, document number, address, email, …) by QR code or by CoreID. The user approves on their phone and CorePass delivers the values to your webhook as a signed attestation. | [KYC overview](./kyc/overview.md) |
 | **KYB — business identity** | Log in as a *business*, request verified company / director / UBO data as a signed attestation, and ask a business to sign a message or typed-data document. | [KYB overview](./kyb/overview.md) |
 
 ## How it fits together
@@ -28,7 +28,7 @@ description: CorePass Connector is the hosted service that lets your application
 ```
 
 - **Browser-facing:** the OAuth 2.0 endpoints (`/oauth2/auth`, `/oauth2/token`, `/userinfo`, discovery and JWKS). The Connector serves the QR login page itself.
-- **Server-to-server:** the KYC (`/api/v1/blockchain/*`, `/api/v2/kyc/*`) and KYB (`/api/v1/kyb/*`) endpoints, authenticated with your **API key**. Never call these from a browser.
+- **Server-to-server:** the KYC (`/api/v3/kyc/*`) and KYB (`/api/v1/kyb/*`) endpoints, authenticated with your **API key**. Never call these from a browser.
 - **Webhooks:** the Connector calls your HTTPS endpoints with status updates and delivered data.
 
 ## Integration journey
