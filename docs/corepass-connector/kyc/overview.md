@@ -1,55 +1,116 @@
 ---
 title: KYC overview
-sidebar_label: Overview
+sidebar_label: Overview & onboarding
 sidebar_position: 1
-description: How KYC transfer works — request verified personal data from a logged-in CorePass user and receive it on your webhook.
+description: How KYC data requests work in API v3. Ask a CorePass user for verified identity fields by QR code or by CoreID, and receive a signed attestation on your webhook.
 ---
 
-**KYC transfer** lets your application request specific **verified** identity fields from a CorePass user, such as their name, date of birth, a document number, their address or email. The user approves the request in the CorePass app, and the Connector delivers the data to your webhook.
+**KYC data requests** let your application ask a CorePass user for specific **verified** identity fields: their name, date of birth, a document number, their address, a document image, their email, and so on. The user approves the request in the CorePass app. CorePass then reads the verified values **on its own servers**, signs them into an **attestation** (an RS256 JWT) and delivers it to the webhook endpoint you registered.
 
-The Connector handles all blockchain interaction and settlement for you. You don't need a wallet or Core Token.
+KYC v3 works the same way as [KYB data requests](../kyb/data-requests.md), with a single person in place of a business. If you are moving from the v2 API (`/api/v2/kyc/qrcode`, `callback`, `Corepass-Signature`, peppers), read the [migration guide](./migration-from-v2.md) first.
 
-## Requirements
-
-- The user is **logged in** to your app, so you know their CoreID ([Login](../authentication.md)).
-- The user has **completed KYC** in their CorePass app for the fields you need.
-- You have an **API key** and a **package** from the [dashboard](../dashboard-setup.md). The package gives you a **Source Key** and a **webhook signing key**.
-- You have a public HTTPS endpoint for the `callback` webhooks.
-
-:::warning Server-to-server only
-Every KYC endpoint is authenticated with your raw API key in the `Authorization` header, without a `Bearer ` prefix. It is **not** the user's OAuth access token. Never call these endpoints from a browser or mobile app.
+:::info What changed in v3
+Values no longer travel from the user's phone to you. There is no blockchain step, no `callback` URL on the request, no pepper and no `/api/v1/blockchain/valid`. You register **one** webhook endpoint and receive a **signed JWT** that carries the values. Images are **links** you fetch with your API key. Every request is billed **per released field** from the same prepaid CHF credit as KYB.
 :::
+
+## Two ways to ask
+
+| | QR code / deep link (**offer**) | Request by **CoreID** |
+| --- | --- | --- |
+| You need to know | Nothing about the user | The user's CoreID, for example from [login](../authentication.md) (`sub`) |
+| Call | [`POST /api/v3/kyc/data-requests/offers`](./api.md#create-an-offer-qr-code) | [`POST /api/v3/kyc/data-requests`](./api.md#create-a-request-by-coreid) |
+| How it reaches the user | You show `qrcode` (desktop) or open `link` (mobile). The user scans and claims it. | CorePass sends a **push notification** to the user's phone. |
+| When the request exists | When the user claims the offer | Immediately |
+
+Both paths end in the same data request, the same approval screen and the same webhook events.
 
 ## The flow
 
-1. **Check** that the user has the fields you need verified: [`GET /api/v1/blockchain/verified`](./api.md#check-which-fields-are-verified).
-2. **Create** the order: [`POST /api/v2/kyc/qrcode`](./api.md#generate-a-kyc-qr-code) returns a QR code (desktop), a deep link (mobile) and a `referenceKey`. Show the QR code or link to the user.
-3. The user **scans and accepts** the request in CorePass. Each status change is POSTed to your `callback` as a `status.updated` event.
-4. The Connector checks the data, then POSTs it to your `callback` as a `data.transferred` event ([Webhooks](./webhooks.md)) and settles on-chain. Verify the signature and return `200`.
-5. Optionally, **poll** the order's status with the `referenceKey`: [`/api/v2/kyc/status`](./api.md#poll-the-latest-status) and [`/api/v2/kyc/all-statuses`](./api.md#fetch-the-full-status-history).
-6. Later, **re-validate** data you stored before relying on it: [`POST /api/v1/blockchain/valid`](./api.md#check-that-stored-data-is-still-valid).
+1. **Check (optional).** [`GET /api/v3/kyc/verified`](./api.md#check-which-fields-are-verified) tells you which fields a CoreID currently holds verified. [`POST /api/v3/kyc/data-requests/quote`](./api.md#quote-a-price) tells you what a set of fields costs.
+2. **Ask.** Create an offer or a request by CoreID. The price is **reserved** on your credit at this point (for an offer, when the user claims it).
+3. **The user approves.** The CorePass app shows your organization's name and domain (taken from your registration, never from the request body), your `purpose` text and the fields. The user approves all or some of the fields, or declines. The approval is signed with the user's own key.
+4. **CorePass releases.** CorePass re-checks that each approved field is still verified, reads the values, signs the attestation and sends `kyc.data_request.released` to your endpoint. You are **charged only for the fields actually released**. The rest of the reservation goes back to your balance.
+5. **You verify and store.** [Verify the attestation](./verifying-attestations.md), deduplicate on `event_id`, store the values you need, and fetch image fields from their `url` with your API key while the release is retained.
 
-[![KYC transfer sequence: your backend, CorePass Connector, Core Blockchain and the CorePass app](/img/docs/corepass-flow.png)](/img/docs/corepass-flow.png)
+```text
+merchant ──POST offer / request──▶ CorePass ──push / QR claim──▶ user's CorePass app
+                                      │                              │ approve (signed)
+                                      ◀──────────────────────────────┘
+                                      │ re-check, read values, sign JWT
+merchant ◀── kyc.data_request.released (attestation) ── CorePass webhook dispatcher
+merchant ──GET /api/v3/kyc/documents/{requestId}/{field} (API key)──▶ image bytes
+```
 
-*Conceptual sequence of a KYC transfer between your backend, the Connector, Core Blockchain and the user's CorePass app. The current status names are listed in [Status values](./statuses.md).*
+## Onboarding
 
-## Choosing fields {#choosing-fields}
+You need the same dashboard setup as for login ([Dashboard setup](../dashboard-setup.md)): an organization, a registered client domain, and an API key for that domain. KYC v3 adds three things.
 
-Field names such as `IDCARD_DOB`, `PASSPORT_DOCUMENT_NUMBER`, `ADDRESS_CITY` or `EMAIL` are listed in [KYC fields](./fields.md). How you choose them depends on the package:
+### Entitlement {#entitlements}
 
-| Package | Fields |
-| --- | --- |
-| **Fixed field set** | You select the fields when you buy the package. Every order created with its Source Key requests exactly those fields. Don't send `fields` in the request. |
-| **Pay per request** | The package has no fixed fields. Name them on each request in `fields` (required) and `optionalFields` (the user may decline these). |
+Every `/api/v3/kyc/...` route requires your organization to hold the **`kyc:data-request`** entitlement. A call without it fails with `403 not_entitled`.
 
-:::tip Don't care which document?
-Use a **parent field** to accept a value from whichever document the user has verified. For example `DOB_PARENT_FIELD` accepts any one of `IDCARD_DOB`, `PASSPORT_DOB`, `DRIVER_LICENSE_DOB` or `RESIDENCE_PERMIT_DOB`. See [Parent fields](./fields.md#parent-fields).
+:::info Not self-service
+CorePass grants `kyc:data-request` on request. Organizations that held a KYC package under v2 received it automatically with the [package conversion](./migration-from-v2.md#packages-become-credit). Otherwise ask your CorePass contact to grant it to your organization UUID.
 :::
 
-## Timing
+### Register a webhook endpoint {#register-a-webhook-endpoint}
 
-The QR code / link `expiration` must be **5–15 minutes** in the future. That's how long the user has to accept.
+Register **one HTTPS endpoint per client domain, once**. Every KYC event for that client domain is delivered to it. This endpoint is separate from your KYB endpoint.
 
-## Storing results
+```bash title="Register (or replace) the endpoint"
+curl -X PUT https://api.corepass.net/api/v3/kyc/webhook-endpoint \
+  -H "Authorization: <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://merchant.example/corepass/kyc-webhooks"}'
+```
 
-Each delivered field comes as a `(field, data, pepper)` triple. **Persist all three.** The `pepper` is as sensitive as the value itself, and you need both to [re-validate](./api.md#check-that-stored-data-is-still-valid) the data later. Every order costs you, so store what you receive.
+```json title="Response"
+{
+  "success": true,
+  "data": {
+    "url": "https://merchant.example/corepass/kyc-webhooks",
+    "secret": "<64-hex webhook secret>",
+    "secretVersion": 1,
+    "active": true,
+    "created": true,
+    "createdAt": "2026-10-23T10:00:00Z"
+  }
+}
+```
+
+:::warning The secret is shown exactly once, and every PUT issues a new one
+Store `secret` immediately. Calling `PUT` again, even with the same URL, issues a **new** secret. To make your startup code idempotent, call [`GET /api/v3/kyc/webhook-endpoint`](./api.md#webhook-endpoint) first and only `PUT` when no endpoint is registered or the URL differs.
+:::
+
+- The URL must be plain `https://` on a public host, without userinfo or a fragment. Redirects are not followed. Loopback, private and metadata addresses are rejected.
+- **Rotate the secret** with `POST /api/v3/kyc/webhook-endpoint/rotate-secret`. The previous secret stays valid for 24 hours.
+- **Reactivate after quarantine** with `POST /api/v3/kyc/webhook-endpoint/reactivate`. See [Retries](./webhooks.md#retries-ordering-and-recovery).
+- Offers (QR codes) **require** a registered endpoint. Without one, creating an offer fails with `409 no_webhook_endpoint`, so you find out before a customer is standing at your checkout.
+
+### Prepaid credit {#billing}
+
+KYC data requests are billed **per released field** in **CHF**, from your organization's prepaid credit. It is the **same balance** as KYB: one top-up in the dashboard's **Billing** page pays for both, and the charge history lists KYB and KYC charges together.
+
+1. **Quote** (optional): [`POST /api/v3/kyc/data-requests/quote`](./api.md#quote-a-price) prices a field list without reserving anything.
+2. **Reserve**: creating a request, or a user claiming your offer, reserves the full quoted amount.
+3. **Charge**: at release you pay only for fields whose outcome is `RELEASED`. Declined, cancelled, expired and failed requests cost nothing.
+
+If your balance cannot cover a request, it is refused up front with `402 insufficient_credit`, or `402 no_credit_account` if your organization has no credit account yet. Per-field prices are on the [field reference](./fields.md) and always current at [`GET /api/v3/kyc/pricing`](./api.md#pricing).
+
+The user who shares their data receives 90% of the charge as a reward in Core Token, and CorePass keeps 10%. You never handle tokens.
+
+## Retention {#retention}
+
+Released values exist on CorePass's side for **168 hours (7 days)** after release, inside the signed payload only. During that window you can [pull the release](./api.md#pull-the-release) again and fetch [document images](./api.md#fetch-a-document-image). After it, both answer `410 payload_expired` and nothing can be signed again. **Store what you need when you receive it.** The attestation itself also expires after 168 hours (`exp`).
+
+## Requirements on the user's side
+
+- The user has completed identity verification in CorePass for the fields you ask for. A request whose required (non-optional) fields are all unavailable is refused with `422 fields_unverified`.
+- The user runs a current CorePass app. Older app versions must update before they can answer v3 requests.
+
+## Next
+
+- [KYC API](./api.md): every route with examples.
+- [Webhooks](./webhooks.md): envelope, events, signature header, retries.
+- [Verifying attestations](./verifying-attestations.md): Go and Node.js reference code.
+- [Field reference](./fields.md), [Statuses & errors](./statuses.md), [Migrating from v2](./migration-from-v2.md).

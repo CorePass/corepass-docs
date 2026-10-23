@@ -2,211 +2,364 @@
 title: KYC API
 sidebar_label: KYC API
 sidebar_position: 2
-description: Endpoints to check verified fields, create a KYC request (QR code / deep link), poll its status and re-validate stored data.
+description: Every KYC v3 endpoint. Create data requests and QR offers, read and cancel them, pull releases, fetch document images, manage the webhook endpoint, and read pricing and charges.
 ---
 
-All endpoints are on `https://auth.corepass.net` and require your API key:
+All endpoints are on **`https://api.corepass.net`** under `/api/v3/kyc`. They are server-to-server only and require your raw API key, without a `Bearer ` prefix:
 
 ```http
 Authorization: <YOUR_API_KEY>
 ```
 
-Successful responses use a standard envelope:
+Every route also requires the [`kyc:data-request` entitlement](./overview.md#entitlements).
+
+Successful responses use the standard envelope. Errors carry a machine-readable `reason` ([full list](./statuses.md#error-reasons)):
 
 ```json
-{ "data": { }, "message": "…", "success": true }
+{ "success": true, "data": { } }
+{ "success": false, "error": { "code": 409, "reason": "no_webhook_endpoint", "message": "…" } }
 ```
 
-Errors use the same HTTP status code in the body:
+**Conventions**
 
-```json
-{ "success": false, "error": { "code": 422, "message": "there is already an ongoing request" } }
-```
+- CoreIDs are 44-character **lower-case** hex ICAN addresses without `0x`, for example `cb72a31c718d343b45e558099ec503087f734433785d`. Upper case and a `0x` prefix are accepted on input and normalized.
+- Request, offer and event IDs are 26-character ULIDs.
+- Timestamps in JSON responses are ISO-8601 UTC strings. Webhook envelopes and JWT claims use Unix seconds.
+- Money is in **CHF cents** (`priceCents`, `chargedCents`, …).
+- Field names are listed in the [field reference](./fields.md). You can also send a field's 64-hex `sha3_256` hash in place of its name.
 
-## Check which fields are verified
+## Check which fields are verified {#check-which-fields-are-verified}
 
-`GET /api/v1/blockchain/verified`
-
-Pass the user's CoreID and the fields as query parameters. Repeat `items` once per field.
+`GET /api/v3/kyc/verified?coreId=…&fields=…`
 
 ```bash title="Request"
-curl -G "https://auth.corepass.net/api/v1/blockchain/verified" \
+curl -G https://api.corepass.net/api/v3/kyc/verified \
   -H "Authorization: <YOUR_API_KEY>" \
-  --data-urlencode "user=ab22b1671b4f7ccc0b16a87514adde84513b6348232e" \
-  --data-urlencode "items=IDCARD_DOB" \
-  --data-urlencode "items=DRIVER_LICENSE_DOCUMENT_NUMBER" \
-  --data-urlencode "items=EMAIL"
+  --data-urlencode "coreId=cb72a31c718d343b45e558099ec503087f734433785d" \
+  --data-urlencode "fields=DOB_PARENT_FIELD,PASSPORT_DOCUMENT_NUMBER,EMAIL"
 ```
 
 ```json title="Response"
 {
+  "success": true,
   "data": {
-    "verifiedItems": ["EMAIL"],
-    "unVerifiedItems": ["IDCARD_DOB", "DRIVER_LICENSE_DOCUMENT_NUMBER"]
-  },
-  "message": "Items were successfully checked.",
-  "success": true
+    "fields": [
+      { "name": "DOB_PARENT_FIELD", "hash": "…", "kind": "value", "available": true, "resolvedName": "PASSPORT_DOB", "priceCents": 20 },
+      { "name": "PASSPORT_DOCUMENT_NUMBER", "hash": "…", "kind": "value", "available": true, "priceCents": 11 },
+      { "name": "EMAIL", "hash": "…", "kind": "value", "available": false, "priceCents": 3 }
+    ]
+  }
 }
 ```
 
-Either list is omitted when it is empty. If a field you need is in `unVerifiedItems`, ask the user to complete that verification in the CorePass app first. Otherwise the next call fails with `422 unverified fields`.
+`available: false` means the user has no currently verified value for that field. It never says why.
 
-## Generate a KYC QR code
-
-`POST /api/v2/kyc/qrcode`
-
-Creates the data-transfer order and returns a QR code and a deep link for the user.
-
-```bash title="Request"
-curl -X POST https://auth.corepass.net/api/v2/kyc/qrcode \
-  -H "Authorization: <YOUR_API_KEY>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "user": "ab72a31c718d343b45e558099ec503087f734433785d",
-    "sourceKey": "<YOUR_SOURCE_KEY>",
-    "callback": "https://api.example.com/corepass/callback",
-    "expiration": 1748000000
-  }'
-```
-
-| Field | Required | Description |
-| --- | :---: | --- |
-| `user` | yes | The user's CoreID (hex, from the JWT `sub` claim without the `coreid:` prefix). |
-| `sourceKey` | yes | The Source Key of one of your packages, from the dashboard's **Packages** page. It identifies your client, the package to bill, and the webhook signing key. |
-| `callback` | yes | HTTPS URL that receives **all** webhooks for this order: status updates and the delivered data. See [Webhooks](./webhooks.md). |
-| `expiration` | yes | Unix time in **seconds**, **5–15 minutes** in the future. This is how long the user has to accept. Any other value returns `400`. |
-| `fields` | no | The fields to request. Only for packages without a fixed field set; see [Choosing fields](./overview.md#choosing-fields). |
-| `optionalFields` | no | Fields the user may choose to share or not. Same rule as `fields`. |
-| `statusCallback` | no | Accepted for compatibility. Status updates are delivered to `callback`. |
-| `withoutQRCode` | no | Accepted for compatibility. |
-
-```json title="Response"
-{
-  "data": {
-    "qrcode": "<BASE64 PNG>",
-    "link": "<deep link for a mobile button>",
-    "expiration": 1748000000,
-    "referenceKey": "<REFERENCE_KEY>"
-  },
-  "message": "QRCode has been successfully generated",
-  "success": true
-}
-```
-
-Show `qrcode` to desktop users and `link` to mobile users:
-
-```html title="Rendering the request"
-<!-- Desktop: scan with the CorePass app -->
-<img alt="Scan with CorePass" src="data:image/png;base64,{{qrcode}}" />
-
-<!-- Mobile: open the CorePass app directly -->
-<a class="button" href="{{link}}">Share with CorePass</a>
-```
-
-:::info Save the `referenceKey`
-You need it to query the order's status. It is derived from the Source Key, the user and the requested fields, so the same request always gets the same `referenceKey`.
+:::note `/api/v1/blockchain/verified` still works
+The older pre-check `GET /api/v1/blockchain/verified?user=…&items=…` is kept unchanged for existing integrations. New code should use `/api/v3/kyc/verified`, which also resolves parent fields and returns prices.
 :::
 
-**Repeated calls.** If you call again with the same user, Source Key and fields while the order is still `PENDING`, you get a fresh QR code for the same order with `"alreadySent": true`. While the order is being processed (`INITIATING`, `INITIATED` or `CONFIRMING`), the call fails with `422`.
+## Create a request by CoreID {#create-a-request-by-coreid}
 
-**Errors**
+`POST /api/v3/kyc/data-requests`
 
-| Status | `error.message` | Cause |
-| --- | --- | --- |
-| `400` | `Invalid Request: …` | A required field is missing or malformed. |
-| `400` | `expiration time is not in valid range` | `expiration` is not Unix seconds 5–15 minutes in the future. |
-| `400` | `no fields provided` | Neither the package nor the request names any fields. |
-| `400` | `user fields (…) are invalid fields` | A name in `fields` / `optionalFields` isn't a [KYC field](./fields.md). |
-| `400` | `sourcekey does not support dynamic fields` | You sent `fields` / `optionalFields` for a package that has a fixed field set. |
-| `404` | `source key not found` | Unknown `sourceKey`. |
-| `422` | `unverified fields` | At least one requested field isn't verified in the user's CorePass app. |
-| `422` | `there is already an ongoing request` | An order for the same user, package and fields is being processed. |
-
-## Poll the latest status
-
-`GET /api/v2/kyc/status?referenceKey=…`
+Use this when you already know the user's CoreID, for example from [login](../authentication.md). CorePass pushes the request to the user's phone.
 
 ```bash title="Request"
-curl "https://auth.corepass.net/api/v2/kyc/status?referenceKey=<REFERENCE_KEY>" \
-  -H "Authorization: <YOUR_API_KEY>"
-```
-
-```json title="Response"
-{
-  "data": {
-    "status": "CONFIRMING",
-    "createdAt": 1677255348,
-    "initiatedTxHash": "0xd90eb185877e47238380f613e3ac77f4cdb6a293ae21019fea7ac1b9ce12a94e"
-  },
-  "message": "status has been sent successfully",
-  "success": true
-}
-```
-
-| Field | Meaning |
-| --- | --- |
-| `status` | One of the [status values](./statuses.md). |
-| `createdAt` | When the order reached this status (Unix seconds). |
-| `initiatedTxHash` | Hash of the on-chain initiate transaction, once it exists. |
-| `confirmTxHash` | Hash of the on-chain confirm transaction, once it exists. |
-| `failureReason` | Present when `status` is `FAILED`. See [Failure reasons](./statuses.md#failure-reasons). |
-
-Empty fields are omitted. An unknown `referenceKey` returns `404 order not found`.
-
-## Fetch the full status history
-
-`GET /api/v2/kyc/all-statuses?referenceKey=…`
-
-```bash title="Request"
-curl "https://auth.corepass.net/api/v2/kyc/all-statuses?referenceKey=<REFERENCE_KEY>" \
-  -H "Authorization: <YOUR_API_KEY>"
-```
-
-```json title="Response"
-{
-  "data": {
-    "allStatuses": [
-      { "status": "PENDING", "createdAt": 1677255257 },
-      { "status": "INITIATING", "createdAt": 1677255317 },
-      { "status": "INITIATED", "createdAt": 1677255329, "initiatedTxHash": "0xd90e…" }
-    ]
-  },
-  "message": "all statuses has sent successfully",
-  "success": true
-}
-```
-
-Each entry has the same fields as the latest-status response.
-
-## Check that stored data is still valid
-
-`POST /api/v1/blockchain/valid`
-
-KYC data can expire or be revoked, for example after fraud or when the user updates their documents. Check a stored value before you rely on it.
-
-```bash title="Request"
-curl -X POST https://auth.corepass.net/api/v1/blockchain/valid \
+curl -X POST https://api.corepass.net/api/v3/kyc/data-requests \
   -H "Authorization: <YOUR_API_KEY>" \
+  -H "Idempotency-Key: order-48291-kyc" \
   -H "Content-Type: application/json" \
   -d '{
-    "user": "ab701b918efb6289a5077f6510740b4bca7f707dbad7",
-    "infos": [
-      { "field": "ADDRESS_CITY",    "data": "Zurich", "pepper": "72b69fbed02d5acbe4aa58d38be4e32283952edc56e9338c4db57bc0ea9b8d4a" },
-      { "field": "ADDRESS_COUNTRY", "data": "CHE",    "pepper": "47aa3e25b647f47488d429d4cf3cd21d927f89d7e9f25c060c7d915d3c901123" }
-    ]
+    "coreId": "cb72a31c718d343b45e558099ec503087f734433785d",
+    "fields": ["NAME_PARENT_FIELD", "DOB_PARENT_FIELD"],
+    "optionalFields": ["EMAIL"],
+    "purpose": "Age and identity check for your account",
+    "reference": "order-48291"
   }'
 ```
 
-| Field | Value |
+| Field | Notes |
 | --- | --- |
-| `field` | The field name. |
-| `data` | The field value as text, i.e. the Base64-**decoded** `data` from the [webhook](./webhooks.md#data-delivered). |
-| `pepper` | The pepper as a **hex** string: Base64-decode `pepper` from the webhook, then hex-encode the bytes. |
+| `coreId` | **Required.** The user's CoreID. |
+| `fields` | **Required.** Field names or hashes the request is about. Parent fields are allowed. At least one of them must be available, otherwise the request is refused with `422 fields_unverified`. |
+| `optionalFields` | Fields the user may leave out. Missing optional fields never refuse the request. |
+| `purpose` | **Required.** Free text shown to the user on the approval screen. Keep it short and specific. |
+| `reference` | Your own order or reference string. It is echoed on the request, on webhooks and on charges. |
+| `Idempotency-Key` header | Recommended. A retry with the same key returns the original request instead of creating a second one. The same key with a different body fails with `409 idempotency_key_conflict`. |
 
 ```json title="Response"
 {
-  "data": { "valids": ["ADDRESS_COUNTRY"], "unValids": ["ADDRESS_CITY"] },
-  "message": "user was successfully checked.",
-  "success": true
+  "success": true,
+  "data": {
+    "requestId": "01JB7Q0M8R2V4X6Z8B0D2F4H6K",
+    "coreId": "cb72a31c718d343b45e558099ec503087f734433785d",
+    "requester": {
+      "kind": "merchant",
+      "organizationUuid": "5d0c…",
+      "clientDomainUuid": "8f1e…",
+      "name": "Example Shop",
+      "domain": "shop.example"
+    },
+    "purpose": "Age and identity check for your account",
+    "purposeDigest": "…",
+    "fields": [
+      { "name": "NAME_PARENT_FIELD", "hash": "…", "kind": "value", "optional": false, "available": true, "priceCents": 20, "approved": false },
+      { "name": "DOB_PARENT_FIELD", "hash": "…", "kind": "value", "optional": false, "available": true, "priceCents": 20, "approved": false },
+      { "name": "EMAIL", "hash": "…", "kind": "value", "optional": true, "available": true, "priceCents": 3, "approved": false }
+    ],
+    "status": "PENDING_APPROVAL",
+    "createdAt": "2026-10-23T10:00:00Z",
+    "expiresAt": "2026-10-24T10:00:00Z",
+    "reference": "order-48291",
+    "vocab": "<vocabulary digest>",
+    "priceCents": 43,
+    "currency": "CHF",
+    "audience": "merchant",
+    "attestationAudience": "8f1e…"
+  }
 }
 ```
+
+- A request by CoreID stays open for a fixed **24 hours**. If the user does nothing, it ends as `EXPIRED`.
+- `priceCents` is the amount **reserved** now. You are charged only for the fields actually released.
+- `attestationAudience` is the value the attestation's `aud` will carry, which is your client domain UUID.
+- A field **never** carries a value on this view. Values exist only in the [release](#pull-the-release).
+
+## Create an offer (QR code) {#create-an-offer-qr-code}
+
+`POST /api/v3/kyc/data-requests/offers`
+
+Use an **offer** when you don't know who the user is yet, for example at checkout or on a sign-up page. The user scans the QR code (or taps the link on mobile) and claims it. The data request is created at that moment, with the claiming user as the subject.
+
+```bash title="Request"
+curl -X POST https://api.corepass.net/api/v3/kyc/data-requests/offers \
+  -H "Authorization: <YOUR_API_KEY>" \
+  -H "Idempotency-Key: checkout-2026-10-23-0001" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fields": ["NAME_PARENT_FIELD", "DOB_PARENT_FIELD"],
+    "optionalFields": ["FACE_IMAGE_PARENT_FIELD"],
+    "purpose": "Age check for your order",
+    "reference": "checkout-1042",
+    "expiresInSeconds": 1800
+  }'
+```
+
+| Field | Notes |
+| --- | --- |
+| `fields`, `optionalFields`, `purpose`, `reference` | As for a request by CoreID. |
+| `expiresInSeconds` | How long the QR code can be claimed. Default **1800** (30 minutes), maximum **3600**. |
+| `Idempotency-Key` header | **Required.** Without it, a retry would create a second QR code. |
+
+```json title="Response"
+{
+  "success": true,
+  "data": {
+    "offerId": "01JB7Q3W5Y7A9C1E3G5J7M9P1R",
+    "status": "OPEN",
+    "link": "corepass:kycdata/?app=Example%20Shop&exp=1761215400&offer=01JB7Q3W5Y7A9C1E3G5J7M9P1R&tok=<64-hex>",
+    "qrcode": "<base64 PNG>",
+    "createdAt": "2026-10-23T10:00:00Z",
+    "expiresAt": "2026-10-23T10:30:00Z",
+    "purpose": "Age check for your order",
+    "purposeDigest": "…",
+    "fields": [ { "name": "NAME_PARENT_FIELD", "hash": "…", "kind": "value", "optional": false, "priceCents": 20 } ],
+    "reference": "checkout-1042",
+    "vocab": "<vocabulary digest>",
+    "priceCents": 150
+  }
+}
+```
+
+Show `qrcode` as an image (`data:image/png;base64,<qrcode>`) on desktop, and use `link` as a button href on mobile.
+
+:::danger Treat the offer link as a secret
+`link` and `qrcode` are returned **only once**, in this response. CorePass stores only a hash of the claim token. Don't log them. An offer is single-use: the first user to claim it becomes the subject.
+:::
+
+### Poll or cancel an offer
+
+| Call | Purpose |
+| --- | --- |
+| `GET /api/v3/kyc/data-requests/offers/{offerId}` | Current state. `status` is `OPEN`, `CLAIMED`, `CANCELLED` or `EXPIRED`. Once `CLAIMED`, it carries `requestId`, `coreId` and `claimedAt`. |
+| `POST /api/v3/kyc/data-requests/offers/{offerId}/cancel` | Withdraw an open offer. On an offer that is no longer open it returns `409 offer_not_open`. |
+
+You also learn about the claim from the `kyc.data_request.pending_approval` [webhook](./webhooks.md#event-catalogue), which carries `offer_id`.
+
+## Read requests
+
+| Call | Purpose |
+| --- | --- |
+| `GET /api/v3/kyc/data-requests/{requestId}` | One request, in the view shown above. After release each field also carries `resolvedName` (for parent fields), `approved` and `outcome`. |
+| `GET /api/v3/kyc/data-requests?status=PENDING_APPROVAL&limit=25&offset=0` | List your client domain's requests, newest first. `status` may repeat. The response is `{requests[], total, limit, offset, vocab}`. |
+
+Field `outcome` after release is one of `RELEASED`, `NO_VALUE`, `NOT_APPROVED` or `UNAVAILABLE`. See [Statuses](./statuses.md#field-outcomes).
+
+## Cancel a request
+
+`POST /api/v3/kyc/data-requests/{requestId}/cancel`
+
+Withdraws a request while it is `PENDING_APPROVAL`. The reservation is returned and a `kyc.data_request.refused` event is sent with `reason: cancelled_by_merchant`. On a resolved request it returns `409 request_not_open`.
+
+:::caution Released data cannot be recalled
+After a release, the data has been disclosed. Cancelling returns `409 request_not_open`.
+:::
+
+## Pull the release {#pull-the-release}
+
+`GET /api/v3/kyc/data-requests/{requestId}/release`
+
+Returns the same signed attestation the `released` webhook carried, for as long as the release is [retained](./overview.md#retention). Use it when you missed a webhook or prefer pulling. The response is sent with `Cache-Control: no-store`.
+
+```json title="Response"
+{
+  "success": true,
+  "data": {
+    "requestId": "01JB7Q0M8R2V4X6Z8B0D2F4H6K",
+    "coreId": "cb72a31c718d343b45e558099ec503087f734433785d",
+    "releasedAt": "2026-10-23T10:04:12Z",
+    "eventId": "01JB7Q9A1C3E5G7J9M1P3R5T7V",
+    "seq": 2,
+    "attestation": "eyJhbGciOiJSUzI1NiIsInR5cCI6Imt5Yy1hdHRlc3RhdGlvbitqd3QiLCJraWQiOiLigKYifQ.…",
+    "attestationKid": "kyc-2026-10",
+    "attestationVer": "1",
+    "attestationExpiresAt": "2026-10-30T10:04:12Z",
+    "fields": [
+      { "name": "PASSPORT_NAME", "hash": "…", "kind": "value", "value": "Jane Doe" },
+      { "name": "PASSPORT_DOB", "hash": "…", "kind": "value", "value": "1990-04-12" },
+      { "name": "PASSPORT_FACE_IMAGE", "hash": "…", "kind": "image", "docType": "PASSPORT",
+        "url": "https://api.corepass.net/api/v3/kyc/documents/01JB7Q0M8R2V4X6Z8B0D2F4H6K/PASSPORT_FACE_IMAGE" }
+    ],
+    "payloadPurgeAfter": "2026-10-30T10:04:12Z",
+    "chargedCents": 150,
+    "chargeCurrency": "CHF"
+  }
+}
+```
+
+:::warning Trust the attestation, not the convenience copy
+`fields` repeats what is inside the JWT for convenience. **Verify `attestation`** ([how](./verifying-attestations.md)) and read the values from its claims. Pass `eventId`, `requestId` and `seq` from this response as the envelope fields.
+:::
+
+| Result | Meaning |
+| --- | --- |
+| `200` | The release, while it is retained. |
+| `404 not_released` | Not released yet. This is not an error; the request is still open or ended without a release. |
+| `410 payload_expired` | Released, but purged after 168 hours. The values **can't be signed again**. Create a new request if you need them. |
+
+## Fetch a document image {#fetch-a-document-image}
+
+`GET /api/v3/kyc/documents/{requestId}/{fieldName}`
+
+Image fields (`kind: "image"`) carry a `url` instead of a value. Fetch it **with your API key**. The bytes are read live from the verification provider on every call and are never stored by CorePass.
+
+```bash title="Request"
+curl -o face.jpg \
+  https://api.corepass.net/api/v3/kyc/documents/01JB7Q0M8R2V4X6Z8B0D2F4H6K/PASSPORT_FACE_IMAGE \
+  -H "Authorization: <YOUR_API_KEY>"
+```
+
+The response is the raw image with its `Content-Type` (for example `image/jpeg`).
+
+- `fieldName` is the **concrete** released field name, such as `PASSPORT_FACE_IMAGE`, never a parent field name.
+- Only the client domain that received the release can fetch it, and only while the release is retained. After that: `410 payload_expired`.
+- If the document is no longer in good standing at the moment you fetch it (the user's verification was reset or revoked), the call fails with `409 document_not_available`.
+- Download images **when you receive the release** if you need to keep them.
+
+## Delivery log, events and redelivery
+
+| Call | Purpose |
+| --- | --- |
+| `GET /api/v3/kyc/data-requests/{requestId}/deliveries?limit=&offset=` | Every webhook delivery attempt: `{deliveries[{eventId, eventType, seq, attempt, attemptedAt, status, httpStatus, error, nextAttemptAt}], total}`. Check it before you contact support. |
+| `GET /api/v3/kyc/data-requests/{requestId}/events?afterSeq=&limit=` | The request's event stream: `{events[{eventId, eventType, seq, timestamp, apiVersion, data, deliveryStatus, attestation, attestationExpired}], total}`. |
+| `POST /api/v3/kyc/data-requests/{requestId}/redeliver` | Queue this request's events again: `{requestId, requeued, total}`. Event IDs don't change, so your deduplication still works. |
+
+## Quote a price {#quote-a-price}
+
+`POST /api/v3/kyc/data-requests/quote`
+
+```bash title="Request"
+curl -X POST https://api.corepass.net/api/v3/kyc/data-requests/quote \
+  -H "Authorization: <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{"fields": ["NAME_PARENT_FIELD", "PASSPORT_FACE_IMAGE"], "optionalFields": ["EMAIL"]}'
+```
+
+```json title="Response"
+{ "success": true, "data": { "lines": [ { "field": "NAME_PARENT_FIELD", "cents": 20 }, { "field": "PASSPORT_FACE_IMAGE", "cents": 110 }, { "field": "EMAIL", "cents": 3 } ], "totalCents": 133, "currency": "CHF" } }
+```
+
+A quote reserves nothing. Creating the request can still fail with `402 insufficient_credit` if your balance changes in the meantime.
+
+## Pricing {#pricing}
+
+`GET /api/v3/kyc/pricing`
+
+```json title="Response"
+{
+  "success": true,
+  "data": {
+    "fields": [
+      { "name": "PASSPORT_DOB", "hash": "…", "priceCents": 20, "kind": "value", "label": "Passport date of birth", "parent": false },
+      { "name": "DOB_PARENT_FIELD", "hash": "…", "priceCents": 20, "kind": "value", "label": "Date of birth (any document)", "parent": true }
+    ],
+    "currency": "CHF",
+    "payoutBps": 9000,
+    "feeBps": 1000,
+    "vocab": "<vocabulary digest>"
+  }
+}
+```
+
+This is the authoritative price list. A field with price `0` is free. A parent field costs what the field it resolves to costs.
+
+## Webhook endpoint {#webhook-endpoint}
+
+| Call | Purpose |
+| --- | --- |
+| `PUT /api/v3/kyc/webhook-endpoint` `{url}` | Register or replace the endpoint. Returns `{url, secret, secretVersion, active, created, createdAt}`. **Every PUT issues a new secret**, shown once. See [Register a webhook endpoint](./overview.md#register-a-webhook-endpoint). |
+| `GET /api/v3/kyc/webhook-endpoint` | The current endpoint, without the secret: `{url, secretVersion, active, disabledAt, disabledReason, consecutiveFailures, lastDeliveryAt, previousSecretValidUntil, createdAt, updatedAt}`. `404 no_webhook_endpoint` if none is registered. |
+| `POST /api/v3/kyc/webhook-endpoint/rotate-secret` | Issue a new secret: `{secret, secretVersion, previousSecretValidUntil}`. The previous secret keeps verifying for 24 hours. |
+| `POST /api/v3/kyc/webhook-endpoint/reactivate` | Clear a quarantine. The queued backlog is then delivered. `409 endpoint_not_quarantined` if the endpoint is active. |
+
+## Charges {#charges}
+
+`GET /api/v3/kyc/billing/charges?limit=&offset=`
+
+```json title="Response"
+{
+  "success": true,
+  "data": {
+    "charges": [
+      {
+        "requestId": "01JB7Q0M8R2V4X6Z8B0D2F4H6K",
+        "merchantReference": "order-48291",
+        "coreId": "cb72a31c718d343b45e558099ec503087f734433785d",
+        "quotedCents": 43,
+        "chargedCents": 40,
+        "currency": "CHF",
+        "ledgerState": "SPENT",
+        "createdAt": "2026-10-23T10:00:00Z",
+        "releasedAt": "2026-10-23T10:04:12Z"
+      }
+    ],
+    "total": 1, "limit": 25, "offset": 0
+  }
+}
+```
+
+`ledgerState` is `RESERVED` (open request), `SPENT` (released and charged), `RELEASED` (the reservation was returned: declined, cancelled, expired or failed), `FAILED` or `DISABLED` (billing switched off for your organization). The balance itself is the shared organization credit; read it with [`GET /api/v1/kyb/billing/account`](../kyb/pricing-billing.md#balance-and-charges) or in the dashboard.
+
+## JWKS {#jwks}
+
+`GET /.well-known/kyc-jwks.json`. Public, no API key, no envelope.
+
+```json
+{ "keys": [ { "kty": "RSA", "use": "sig", "alg": "RS256", "kid": "kyc-2026-10", "n": "…", "e": "AQAB" } ] }
+```
+
+It holds the **KYC** attestation keys only. They are different from the KYB keys at `/.well-known/kyb-jwks.json`. See [Verifying attestations](./verifying-attestations.md).
+
+## Retired endpoints
+
+These v2 endpoints answer **`410 Gone`** with reason `kyc_api_retired`: `POST /api/v1/kyc/provide`, `POST /api/v1/kyc/transmit`, every `/api/v2/kyc/*` route (`qrcode`, `status`, `all-statuses`, `pre-transmit`, `webhook-responses`), `POST /upload` and `POST /api/v1/blockchain/valid`. See the [migration guide](./migration-from-v2.md).

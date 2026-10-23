@@ -1,177 +1,102 @@
 ---
 title: KYC webhooks
-sidebar_label: Webhooks & signatures
+sidebar_label: Webhooks & Corepass-KYC-Signature
 sidebar_position: 3
-description: Payloads the Connector POSTs to your KYC callback URL, how to verify the Corepass-Signature HMAC header, and how to decode delivered data.
+description: The KYC v3 webhook envelope, event catalogue, the Corepass-KYC-Signature header, deduplication, retries, quarantine and pulling results.
 ---
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-The Connector sends every webhook for a KYC order to the **`callback`** URL you passed to [`POST /api/v2/kyc/qrcode`](./api.md#generate-a-kyc-qr-code), both status changes and the delivered data. Your handler must therefore tell the two event types apart by `event`:
+Every KYC event is delivered to the one endpoint you [registered](./overview.md#register-a-webhook-endpoint) for the client domain, always in the same envelope:
 
-| `event` | Sent when | Carries |
-| --- | --- | --- |
-| `status.updated` | The order changes status (`initiating`, `initiated`, `confirming`, `confirmed`, `failed`). | The new status and the order's fields. |
-| `data.transferred` | The user's verified data has been received and checked. | The data, Base64-encoded. |
-
-:::note `statusCallback`
-The `statusCallback` request field is accepted for compatibility but is optional. Status updates are delivered to `callback`.
-:::
-
-Every webhook is a `POST` with a JSON body and a `Corepass-Signature` header. Respond with any **2xx** status to acknowledge it.
-
-## Status update
-
-```http title="status.updated"
-POST <your callback URL>
+```http title="Webhook delivery"
+POST <your registered endpoint>
 Content-Type: application/json
-Corepass-Signature: t=1748000100,s=5f0c…e91a
+Corepass-KYC-Signature: t=1761213852,v1=<hex hmac>,kv=1
+Corepass-Event-Id: 01JB7Q9A1C3E5G7J9M1P3R5T7V
+Corepass-Delivery-Attempt: 1
+Corepass-Kyc-Api-Version: 2026-10-23
 
 {
-  "event": "status.updated",
-  "timestamp": 1748000100,
-  "data": {
-    "userAddress": "ab148af5f9cdad10beddb05fbec4a3bef02577130e56",
-    "fields": ["EMAIL", "IDCARD_DOB"],
-    "status": "initiated",
-    "deadline": 1748000400,
-    "txHash": "0xd90eb1…",
-    "timestamp": 1748000100
-  }
+  "event":       "kyc.data_request.released",
+  "event_id":    "01JB7Q9A1C3E5G7J9M1P3R5T7V",
+  "stream_id":   "01JB7Q0M8R2V4X6Z8B0D2F4H6K",
+  "seq":         2,
+  "timestamp":   1761213852,
+  "api_version": "2026-10-23",
+  "data":        { "…": "routing fields only, see below" },
+  "attestation": "eyJhbGciOiJSUzI1NiIs…"
 }
 ```
 
 | Field | Meaning |
 | --- | --- |
-| `status` | The new order status, **lower-case**. See [Status values](./statuses.md). |
-| `fields` | The fields of this order. |
-| `deadline` | The order's `expiration` (Unix seconds). |
-| `txHash` | Hash of the order's on-chain *initiate* transaction, once it exists. |
+| `event` | Event type. See the [catalogue](#event-catalogue). |
+| `event_id` | 26-character ULID. It is identical on every retry and redelivery. **Use it to deduplicate.** It equals the attestation's `jti`. |
+| `stream_id` | The data request this event belongs to (its `requestId`). |
+| `seq` | Sequence number within the stream. |
+| `timestamp` | Unix seconds when the event was created. |
+| `attestation` | RS256-signed JWT. Present on `released` only. **This is what you trust.** |
 
-When an order ends in `failed`, no `data.transferred` event follows. Call [`GET /api/v2/kyc/status`](./api.md#poll-the-latest-status) to read the `failureReason`.
+The envelope uses `snake_case` and Unix seconds, like the KYB envelope. The REST API uses `camelCase` and ISO-8601.
 
-## Data delivered
+## Event catalogue {#event-catalogue}
 
-```http title="data.transferred"
-POST <your callback URL>
-Content-Type: application/json
-Corepass-Signature: t=1748000123,s=8a41…07bc
+| Event | Attested | `data` carries |
+| --- | :---: | --- |
+| `kyc.data_request.pending_approval` | no | `request_id`, `provider_core_id`, `fields[{name, hash, kind, optional}]`, `created_at`, `expires_at`, `merchant_reference`, `price{quoted_cents, currency, lines[]}` and, when the request came from a QR offer, `offer_id`. |
+| `kyc.data_request.released` | **yes** | Routing fields only: `request_id`, `provider_core_id`, `released_at`, `field_count`, `attestation_ver`, `attestation_kid`, `attestation_expires_at`, `charge{charged_cents, currency, lines[]}`. **The values are only inside the attestation.** |
+| `kyc.data_request.refused` | no | `request_id`, `provider_core_id`, `reason`, `refused_at`. `reason` is one of the [reason codes](./statuses.md#reason-codes), for example `declined_by_user`, `expired` or `cancelled_by_merchant`. |
 
-{
-  "event": "data.transferred",
-  "timestamp": 1748000123,
-  "data": {
-    "userAddress": "ab432e666932c53128d9f73712b058a7a8f7df52f5cb",
-    "infos": "<Base64-encoded JSON array>",
-    "deadline": 1748000400,
-    "txHash": "0xd90eb1…",
-    "timestamp": 1748000123
-  }
-}
+```jsonc title="Pricing on the wire"
+// pending_approval: the reserved amount
+"price":  {"quoted_cents": 150, "currency": "CHF", "lines": [{"field": "PASSPORT_FACE_IMAGE", "cents": 110}, …]}
+// released: the actual charge, released fields only
+"charge": {"charged_cents": 40, "currency": "CHF", "lines": [{"field": "PASSPORT_NAME", "cents": 20}, …]}
 ```
 
-`data.infos` is a Base64 string. Decode it and parse the result as JSON to get one entry per field:
-
-```json title="decoded data.infos"
-[
-  { "field": "DRIVER_LICENSE_DOB",        "data": "MTk4Ni0wOS0wNg==", "pepper": "N050Jk1LMVp4…" },
-  { "field": "DRIVER_LICENSE_ISSUE_DATE", "data": "MjAyMC0xMS0xMg==", "pepper": "N050Jk1LMVp4…" }
-]
-```
-
-`data` and `pepper` are byte arrays, themselves **Base64-encoded** in the JSON. Base64-decode `data` to get the value; for text fields it's a UTF-8 string such as `1986-09-06`.
-
-:::warning Persist every triple
-Store `field`, the decoded `data` and the decoded `pepper` for every delivered field. You need all three to [re-validate](./api.md#check-that-stored-data-is-still-valid) the data later, and the pepper is as sensitive as the value itself.
+:::warning Verify every attestation, including unknown event types
+New attested event types may be added. If an envelope carries `attestation`, verify it, whatever the `event` is. Skipping verification for an event type you don't recognize throws the guarantee away.
 :::
 
-## Verifying the signature
+## Verifying a delivery
 
-Every webhook carries a `Corepass-Signature` header:
-
-```http
-Corepass-Signature: t=<unix timestamp>,s=<hex HMAC>
-```
-
-- **Algorithm:** HMAC-SHA256, hex-encoded (lower case).
-- **Key:** the **webhook signing key** of the package (Source Key) the order was created with. You find it next to the Source Key on the dashboard's **Packages** page ([details](../dashboard-setup.md#source-key)). Each package has its own key.
-- **Signed message:** `<t>.<raw request body>`: the timestamp from the header, a dot, then the exact body bytes you received.
-- **Freshness:** reject requests whose `t` is more than **5 minutes** away from your own clock.
-
-To verify:
-
-1. Split the header on `,` and read `t` and `s`.
-2. Check that `t` is within 5 minutes of your current time.
-3. Compute `HMAC-SHA256(key, t + "." + rawBody)` and hex-encode it.
-4. Compare it with `s` in **constant time**. Reject on mismatch.
-
-:::warning Use the raw body
-Compute the MAC over the bytes exactly as received, before any JSON parsing. Re-serializing a parsed object changes the bytes and breaks the signature.
+:::info The attestation JWT is your security boundary
+The `Corepass-KYC-Signature` HMAC header is **transport hygiene**. **The attestation JWT is the proof.** A receiver that verifies the JWT and ignores the header is fully protected for released data. Events without an attestation (`pending_approval`, `refused`) carry no personal data. If you act on them, check the header or confirm with [`GET /api/v3/kyc/data-requests/{requestId}`](./api.md#read-requests).
 :::
+
+### The attestation checks
+
+Run them in this order. Reference code is in [Verifying attestations](./verifying-attestations.md).
+
+1. The JWT header `typ` is `kyc-attestation+jwt`. Check it **before** the signature, so any other kind of token (a KYB attestation, a login token) is rejected right away.
+2. `alg` is `RS256`. Hard-code it and never read the algorithm from the header.
+3. The signature verifies against the key named by `kid`, from `https://api.corepass.net/.well-known/kyc-jwks.json`.
+4. `iss` is `https://api.corepass.net/kyc`, `aud` is **your client domain UUID**, and `exp` / `iat` are valid, with a small clock-skew leeway.
+5. The envelope agrees with the signed copies: `event_id` equals `jti`, `stream_id` equals `request_id`, and `seq` equals the signed `seq` when the claim is present.
+
+### Deduplicate on `event_id`
+
+Delivery is **at-least-once**. You will sometimes receive the same event twice, for example after a timeout on your side or a manual redelivery. `event_id` is byte-identical on every retry and is the only correct deduplication key. A unique index on it is enough.
+
+### Optional: checking the `Corepass-KYC-Signature` header {#signature-header}
+
+The header is `t=<unix>,v1=<hex hmac>,kv=<secret version>`:
+
+- `v1` is `hex(HMAC-SHA256(secret, "<t>.<raw body bytes>"))`, keyed with your endpoint `secret`.
+- Compare `t` with **your own clock** and allow **5 minutes** of skew. Never use a timestamp from the body.
+- MAC the **exact bytes you received**, not a re-serialization of the parsed JSON.
+- Compare MACs in **constant time**.
+- `kv` names the secret version. During the 24 hours after a [rotation](./api.md#webhook-endpoint), accept the previous version too.
+
+The header name differs from KYB's `Corepass-KYB-Signature` on purpose, so a KYB verifier can never be pointed at KYC traffic by mistake.
 
 <Tabs groupId="lang">
-<TabItem value="node" label="Node.js" default>
+<TabItem value="go" label="Go" default>
 
-```js title="kycWebhook.js"
-import crypto from "node:crypto";
-import express from "express";
-
-const SIGNING_KEY = process.env.COREPASS_KYC_WEBHOOK_KEY; // from the Packages page
-const TOLERANCE_SECONDS = 5 * 60;
-
-function verifyCorepassSignature(header, rawBody) {
-  const parts = Object.fromEntries(
-    (header ?? "").split(",").map((p) => p.trim().split("=", 2)),
-  );
-  const t = Number.parseInt(parts.t, 10);
-  if (!Number.isFinite(t) || !parts.s) throw new Error("malformed signature header");
-
-  if (Math.abs(Math.floor(Date.now() / 1000) - t) > TOLERANCE_SECONDS) {
-    throw new Error("stale signature");
-  }
-
-  const expected = crypto
-    .createHmac("sha256", SIGNING_KEY)
-    .update(`${t}.`)
-    .update(rawBody)
-    .digest("hex");
-
-  const a = Buffer.from(expected, "hex");
-  const b = Buffer.from(parts.s, "hex");
-  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
-    throw new Error("signature does not match");
-  }
-}
-
-const app = express();
-
-// Keep the raw bytes: the MAC is computed over them.
-app.post("/corepass/callback", express.raw({ type: "application/json" }), (req, res) => {
-  try {
-    verifyCorepassSignature(req.header("Corepass-Signature"), req.body);
-  } catch (e) {
-    return res.status(400).send(e.message);
-  }
-
-  const event = JSON.parse(req.body.toString("utf8"));
-  if (event.event === "data.transferred") {
-    const infos = JSON.parse(Buffer.from(event.data.infos, "base64").toString("utf8"));
-    for (const info of infos) {
-      const value = Buffer.from(info.data, "base64");   // the field value
-      const pepper = Buffer.from(info.pepper, "base64"); // keep for re-validation
-      // Durably store { field: info.field, value, pepper } …
-    }
-  }
-  res.sendStatus(200);
-});
-```
-
-</TabItem>
-<TabItem value="go" label="Go">
-
-```go title="signature.go"
-package corepass
+```go title="kycsignature.go"
+package kycwebhook
 
 import (
 	"crypto/hmac"
@@ -183,93 +108,97 @@ import (
 	"time"
 )
 
-const tolerance = 5 * time.Minute
-
-// VerifySignature checks a Corepass-Signature header against the raw body.
-// key is the package's webhook signing key from the dashboard.
-func VerifySignature(header string, rawBody []byte, key string, now time.Time) error {
-	var t int64
-	var sig []byte
+// VerifySignatureHeader checks Corepass-KYC-Signature against the raw body.
+// secrets maps secret version (the kv member) to the endpoint secret.
+func VerifySignatureHeader(header string, body []byte, secrets map[int]string, now time.Time) error {
+	var ts int64
+	var mac string
+	kv := -1
 	for _, part := range strings.Split(header, ",") {
-		k, v, ok := strings.Cut(strings.TrimSpace(part), "=")
+		key, value, ok := strings.Cut(strings.TrimSpace(part), "=")
 		if !ok {
 			continue
 		}
-		switch k {
+		switch key {
 		case "t":
-			ts, err := strconv.ParseInt(v, 10, 64)
-			if err != nil {
-				return errors.New("malformed timestamp")
-			}
-			t = ts
-		case "s":
-			b, err := hex.DecodeString(v)
-			if err != nil {
-				return errors.New("malformed signature")
-			}
-			sig = b
+			ts, _ = strconv.ParseInt(value, 10, 64)
+		case "v1":
+			mac = value
+		case "kv":
+			kv, _ = strconv.Atoi(value)
 		}
 	}
-	if t == 0 || sig == nil {
-		return errors.New("malformed signature header")
+	if ts == 0 || mac == "" {
+		return errors.New("malformed Corepass-KYC-Signature")
 	}
-
-	age := now.Sub(time.Unix(t, 0))
-	if age < 0 {
-		age = -age
+	if d := now.Sub(time.Unix(ts, 0)); d > 5*time.Minute || d < -5*time.Minute {
+		return errors.New("signature timestamp outside tolerance")
 	}
-	if age > tolerance {
-		return errors.New("stale signature")
+	secret, ok := secrets[kv]
+	if !ok {
+		return errors.New("unknown secret version")
 	}
-
-	mac := hmac.New(sha256.New, []byte(key))
-	mac.Write([]byte(strconv.FormatInt(t, 10) + "."))
-	mac.Write(rawBody)
-	if !hmac.Equal(mac.Sum(nil), sig) {
-		return errors.New("signature does not match")
+	h := hmac.New(sha256.New, []byte(secret))
+	h.Write([]byte(strconv.FormatInt(ts, 10) + "."))
+	h.Write(body)
+	want := hex.EncodeToString(h.Sum(nil))
+	if !hmac.Equal([]byte(want), []byte(strings.ToLower(mac))) {
+		return errors.New("signature mismatch")
 	}
 	return nil
 }
 ```
 
-Decoding a `data.transferred` payload:
+</TabItem>
+<TabItem value="node" label="Node.js">
 
-```go title="decode.go"
-package corepass
+```js title="kycSignature.js"
+import { createHmac, timingSafeEqual } from "node:crypto";
 
-import (
-	"encoding/base64"
-	"encoding/json"
-)
+// rawBody must be the exact Buffer received, e.g. express.raw({ type: "application/json" }).
+// secrets maps secret version (kv) to the endpoint secret.
+export function verifySignatureHeader(header, rawBody, secrets, nowSeconds = Math.floor(Date.now() / 1000)) {
+  const parts = Object.fromEntries(
+    header.split(",").map((p) => p.trim().split("=", 2)),
+  );
+  const t = Number(parts.t);
+  if (!t || !parts.v1) throw new Error("malformed Corepass-KYC-Signature");
+  if (Math.abs(nowSeconds - t) > 300) throw new Error("signature timestamp outside tolerance");
 
-type Info struct {
-	Field  string `json:"field"`
-	Data   []byte `json:"data"`   // encoding/json Base64-decodes []byte for you
-	Pepper []byte `json:"pepper"`
-}
+  const secret = secrets[Number(parts.kv)];
+  if (!secret) throw new Error("unknown secret version");
 
-func DecodeInfos(infosB64 string) ([]Info, error) {
-	raw, err := base64.StdEncoding.DecodeString(infosB64)
-	if err != nil {
-		return nil, err
-	}
-	var infos []Info
-	return infos, json.Unmarshal(raw, &infos)
+  const want = createHmac("sha256", secret).update(`${t}.`).update(rawBody).digest();
+  const got = Buffer.from(parts.v1, "hex");
+  if (got.length !== want.length || !timingSafeEqual(got, want)) {
+    throw new Error("signature mismatch");
+  }
 }
 ```
 
 </TabItem>
 </Tabs>
 
-:::caution Legacy verification removed
-The self-hosted Connector put a `signature` field in the body and verified it with a SHA3 hash and `Ecrecover`. That scheme no longer exists. Don't port old verification code.
-:::
+## Retries, ordering and recovery {#retries-ordering-and-recovery}
 
-## Retries
+- Return any **2xx** within **10 seconds** to accept a delivery. Anything else, including a timeout or a redirect, counts as a failure.
+- Failed deliveries are retried with exponential backoff: the first retry after about **15 seconds**, doubling each time, with at most **2 hours** between attempts. After **10 attempts** the event is dead-lettered. It stays visible in the [delivery log](./api.md#delivery-log-events-and-redelivery) and can be queued again with `redeliver` while the release is retained.
+- Events of one request (`stream_id`) are delivered **in order**: `seq` 2 is never sent before `seq` 1 has succeeded or run out of attempts.
+- After **25 consecutive failures** your endpoint is **quarantined**. Events keep queuing and nothing is dropped. Fix your receiver, then call `POST /api/v3/kyc/webhook-endpoint/reactivate`; the backlog is delivered automatically.
+- `GET …/{requestId}/deliveries` shows each attempt and what your host answered. `GET …/{requestId}/events?afterSeq=` returns the full event stream. `POST …/{requestId}/redeliver` queues the events again with the same `event_id`s.
+- The endpoint must resolve to a public address. Redirects are never followed. Loopback, private and metadata addresses are rejected at registration and again at delivery.
 
-If your endpoint doesn't answer with a 2xx status (or times out), the Connector retries on a schedule that CorePass manages. Design your handler to:
+## Pulling instead of waiting {#pulling-instead-of-waiting}
 
-- **Be idempotent.** The same event can arrive more than once.
-- **Acknowledge fast.** Return `200` as soon as the payload is durably stored, and do the rest in your own background workers.
+If you missed a webhook and don't want to wait for redelivery, [pull the release](./api.md#pull-the-release):
 
-The dashboard's [Webhook page](../dashboard-setup.md#webhook-history) shows every delivery attempt with the status code and response body.
+```bash title="Pull a release"
+curl https://api.corepass.net/api/v3/kyc/data-requests/<requestId>/release \
+  -H "Authorization: <YOUR_API_KEY>"
+```
+
+It returns the same attestation the webhook carried. **Verify it exactly as you would a webhook delivery**, using `eventId`, `requestId` and `seq` from the response as the envelope fields. After 168 hours it answers `410 payload_expired`.
+
+## What you're never told
+
+Why a field is unavailable, which documents the user holds beyond what you asked for, or anything about the user's other requests. A refusal carries only a [reason code](./statuses.md#reason-codes). Released values exist only inside the attestation, never in `data`.
