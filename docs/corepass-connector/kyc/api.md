@@ -26,7 +26,7 @@ Successful responses use the standard envelope. Errors carry a machine-readable 
 - Request, offer and event IDs are 26-character ULIDs.
 - Timestamps in JSON responses are ISO-8601 UTC strings. Webhook envelopes and JWT claims use Unix seconds.
 - Money is in **CHF cents** (`priceCents`, `chargedCents`, …).
-- Field names are listed in the [field reference](./fields.md). You can also send a field's 64-hex `sha3_256` hash in place of its name.
+- Field names are listed in the [field reference](./fields.md). You can also send a field's 64-hex `sha3_256` hash in place of its name. Each field may appear once across `fields` and `optionalFields`, whichever way it is spelled: a name and its own hash together are `400 malformed_request`.
 
 ## Check which fields are verified {#check-which-fields-are-verified}
 
@@ -259,7 +259,7 @@ curl -o face.jpg \
   -H "Authorization: <YOUR_API_KEY>"
 ```
 
-The response is the raw image with its `Content-Type` (for example `image/jpeg`).
+The response is the raw document with its `Content-Type`: an image type such as `image/jpeg`, or `application/pdf`. Any other type is served as `application/octet-stream`. Responses carry `Content-Disposition: attachment` and `X-Content-Type-Options: nosniff`, so treat the bytes as a file, never as a page to render.
 
 - `fieldName` is the **concrete** released field name, such as `PASSPORT_FACE_IMAGE`, never a parent field name.
 - Only the client domain that received the release can fetch it, and only while the release is retained. After that: `410 payload_expired`.
