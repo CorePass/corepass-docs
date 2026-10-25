@@ -46,7 +46,7 @@ The envelope uses `snake_case` and Unix seconds, like the KYB envelope. The REST
 | Event | Attested | `data` carries |
 | --- | :---: | --- |
 | `kyc.data_request.pending_approval` | no | `request_id`, `provider_core_id`, `fields[{name, hash, kind, optional}]`, `created_at`, `expires_at`, `merchant_reference`, `price{quoted_cents, currency, lines[]}` and, when the request came from a QR offer, `offer_id`. |
-| `kyc.data_request.released` | **yes** | Routing fields only: `request_id`, `provider_core_id`, `released_at`, `field_count`, `attestation_ver`, `attestation_kid`, `attestation_expires_at`, `charge{charged_cents, currency, lines[]}`. **The values are only inside the attestation.** |
+| `kyc.data_request.released` | **yes** | Routing fields only: `request_id`, `provider_core_id`, `released_at`, `field_count`, `refused_fields[{field, hash, outcome}]` (the requested fields that released nothing, with their [outcome](./statuses.md#field-outcomes); absent when every field released), `attestation_ver`, `attestation_kid`, `attestation_expires_at`, `charge{charged_cents, currency, lines[]}`. **The values are only inside the attestation.** |
 | `kyc.data_request.refused` | no | `request_id`, `provider_core_id`, `reason`, `refused_at`. `reason` is one of the [reason codes](./statuses.md#reason-codes), for example `declined_by_user`, `expired` or `cancelled_by_merchant`. |
 
 ```jsonc title="Pricing on the wire"

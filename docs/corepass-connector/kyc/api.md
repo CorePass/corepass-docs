@@ -11,13 +11,13 @@ All endpoints are on **`https://api.corepass.net`** under `/api/v3/kyc`. They ar
 Authorization: <YOUR_API_KEY>
 ```
 
-Every route also requires the [`kyc:data-request` entitlement](./overview.md#entitlements).
+Every route also requires the [`kyc:data-request` entitlement](./overview.md#entitlements), except the setup routes ([pricing](#pricing), [charges](#charges) and the [webhook endpoint](#webhook-endpoint)), which need only the default `kyb:read`.
 
 Successful responses use the standard envelope. Errors carry a machine-readable `reason` ([full list](./statuses.md#error-reasons)):
 
 ```json
 { "success": true, "data": { } }
-{ "success": false, "error": { "code": 409, "reason": "no_webhook_endpoint", "message": "…" } }
+{ "success": false, "error": { "code": 409, "reason": "webhook_endpoint_required", "message": "…" } }
 ```
 
 **Conventions**
@@ -26,6 +26,7 @@ Successful responses use the standard envelope. Errors carry a machine-readable 
 - Request, offer and event IDs are 26-character ULIDs.
 - Timestamps in JSON responses are ISO-8601 UTC strings. Webhook envelopes and JWT claims use Unix seconds.
 - Money is in **CHF cents** (`priceCents`, `chargedCents`, …).
+- A request names at most **64 fields** across `fields` and `optionalFields`. `purpose` (at least 8 characters) and `reference` are at most **512 bytes** of UTF-8 each. See [Limits](./overview.md#limits).
 - Field names are listed in the [field reference](./fields.md). You can also send a field's 64-hex `sha3_256` hash in place of its name. Each field may appear once across `fields` and `optionalFields`, whichever way it is spelled: a name and its own hash together are `400 malformed_request`.
 
 ## Check which fields are verified {#check-which-fields-are-verified}
@@ -43,6 +44,9 @@ curl -G https://api.corepass.net/api/v3/kyc/verified \
 {
   "success": true,
   "data": {
+    "coreId": "cb72a31c718d343b45e558099ec503087f734433785d",
+    "verified": ["DOB_PARENT_FIELD", "PASSPORT_DOCUMENT_NUMBER"],
+    "unverified": ["EMAIL"],
     "fields": [
       { "name": "DOB_PARENT_FIELD", "hash": "…", "kind": "value", "available": true, "resolvedName": "PASSPORT_DOB", "priceCents": 20 },
       { "name": "PASSPORT_DOCUMENT_NUMBER", "hash": "…", "kind": "value", "available": true, "priceCents": 11 },
@@ -95,8 +99,8 @@ curl -X POST https://api.corepass.net/api/v3/kyc/data-requests \
     "coreId": "cb72a31c718d343b45e558099ec503087f734433785d",
     "requester": {
       "kind": "merchant",
-      "organizationUuid": "5d0c…",
-      "clientDomainUuid": "8f1e…",
+      "organizationUUID": "5d0c…",
+      "clientDomainUUID": "8f1e…",
       "name": "Example Shop",
       "domain": "shop.example"
     },
@@ -124,6 +128,16 @@ curl -X POST https://api.corepass.net/api/v3/kyc/data-requests \
 - `priceCents` is the amount **reserved** now. You are charged only for the fields actually released.
 - `attestationAudience` is the value the attestation's `aud` will carry, which is your client domain UUID.
 - A field **never** carries a value on this view. Values exist only in the [release](#pull-the-release).
+
+| Refusal | Meaning |
+| --- | --- |
+| `402 insufficient_credit` | Your credit cannot cover `priceCents`. `requiredCents` and `availableCents` say by how much. |
+| `409 open_request_exists` | This CoreID already has an open request from your client domain. |
+| `429 cooldown_active` | The user declined your last request recently. Wait `Retry-After` seconds. |
+| `429 daily_quota_exceeded` | Your daily request quota is used up. Wait `Retry-After` seconds. |
+| `422 fields_unverified` | None of the required fields is verified for this user. |
+
+See [Limits](./overview.md#limits) for the rules behind the `409` and the `429`s.
 
 ## Create an offer (QR code) {#create-an-offer-qr-code}
 
@@ -172,6 +186,8 @@ curl -X POST https://api.corepass.net/api/v3/kyc/data-requests/offers \
 ```
 
 Show `qrcode` as an image (`data:image/png;base64,<qrcode>`) on desktop, and use `link` as a button href on mobile.
+
+An offer is refused with `409 webhook_endpoint_required` while your client domain has no [webhook endpoint](./overview.md#register-a-webhook-endpoint), and with `402 insufficient_credit` when your credit cannot cover `priceCents`.
 
 :::danger Treat the offer link as a secret
 `link` and `qrcode` are returned **only once**, in this response. CorePass stores only a hash of the claim token. Don't log them. An offer is single-use: the first user to claim it becomes the subject.
@@ -227,7 +243,7 @@ Returns the same signed attestation the `released` webhook carried, for as long 
     "fields": [
       { "name": "PASSPORT_NAME", "hash": "…", "kind": "value", "value": "Jane Doe" },
       { "name": "PASSPORT_DOB", "hash": "…", "kind": "value", "value": "1990-04-12" },
-      { "name": "PASSPORT_FACE_IMAGE", "hash": "…", "kind": "image", "docType": "PASSPORT",
+      { "name": "PASSPORT_FACE_IMAGE", "hash": "…", "kind": "image", "docType": "passport",
         "url": "https://api.corepass.net/api/v3/kyc/documents/01JB7Q0M8R2V4X6Z8B0D2F4H6K/PASSPORT_FACE_IMAGE" }
     ],
     "payloadPurgeAfter": "2026-10-30T10:04:12Z",
@@ -317,7 +333,7 @@ This is the authoritative price list. A field with price `0` is free. A parent f
 
 | Call | Purpose |
 | --- | --- |
-| `PUT /api/v3/kyc/webhook-endpoint` `{url}` | Register or replace the endpoint. Returns `{url, secret, secretVersion, active, created, createdAt}`. **Every PUT issues a new secret**, shown once. See [Register a webhook endpoint](./overview.md#register-a-webhook-endpoint). |
+| `PUT /api/v3/kyc/webhook-endpoint` `{url}` | Register or replace the endpoint. Returns `{url, secret, secretVersion, active, createdAt}`, with `201` when the endpoint was created and `200` when it replaced one. **Every PUT issues a new secret**, shown once. See [Register a webhook endpoint](./overview.md#register-a-webhook-endpoint). |
 | `GET /api/v3/kyc/webhook-endpoint` | The current endpoint, without the secret: `{url, secretVersion, active, disabledAt, disabledReason, consecutiveFailures, lastDeliveryAt, previousSecretValidUntil, createdAt, updatedAt}`. `404 no_webhook_endpoint` if none is registered. |
 | `POST /api/v3/kyc/webhook-endpoint/rotate-secret` | Issue a new secret: `{secret, secretVersion, previousSecretValidUntil}`. The previous secret keeps verifying for 24 hours. |
 | `POST /api/v3/kyc/webhook-endpoint/reactivate` | Clear a quarantine. The queued backlog is then delivered. `409 endpoint_not_quarantined` if the endpoint is active. |
@@ -333,7 +349,7 @@ This is the authoritative price list. A field with price `0` is free. A parent f
     "charges": [
       {
         "requestId": "01JB7Q0M8R2V4X6Z8B0D2F4H6K",
-        "merchantReference": "order-48291",
+        "reference": "order-48291",
         "coreId": "cb72a31c718d343b45e558099ec503087f734433785d",
         "quotedCents": 43,
         "chargedCents": 40,

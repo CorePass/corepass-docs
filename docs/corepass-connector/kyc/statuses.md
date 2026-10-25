@@ -76,14 +76,16 @@ Non-2xx responses carry `error.reason`. Branch on it rather than on the HTTP sta
 | `malformed_request` | 400 | Fix the body or parameters. |
 | `apikey_missing` | 401 | Send your API key in `Authorization`, without `Bearer`. |
 | `apikey_invalid` | 401 | The API key is unknown or revoked. |
-| `insufficient_credit` | 402 | Top up your credit. The body can include `requiredChf` and `availableChf`. |
+| `insufficient_credit` | 402 | Top up your credit. `error.requiredCents` and `error.availableCents` (CHF cents) say by how much; the older `requiredChf` / `availableChf` may also be present. |
 | `no_credit_account` | 402 | Your organization has no credit account yet. Buy credit in the dashboard. |
 | `not_entitled` | 403 | Ask your CorePass contact for `kyc:data-request`. |
 | `subject_not_found` | 404 | No CorePass user with that CoreID has any KYC record. |
 | `request_not_found` | 404 | Unknown request ID, or not yours. |
 | `offer_not_found` | 404 | Unknown offer ID, or not yours. |
 | `not_released` | 404 | The request hasn't been released. Not an error. |
-| `no_webhook_endpoint` | 404 / 409 | 404 from `GET /webhook-endpoint`. 409 when creating an offer: [register an endpoint](./overview.md#register-a-webhook-endpoint) first. |
+| `no_webhook_endpoint` | 404 | `GET /webhook-endpoint`, `rotate-secret` or `reactivate` with no endpoint registered. |
+| `webhook_endpoint_required` | 409 | Creating an offer while no webhook endpoint is registered. [Register one](./overview.md#register-a-webhook-endpoint) first. Requests by CoreID do not need one. |
+| `open_request_exists` | 409 | This CoreID already has an open (`PENDING_APPROVAL` or `APPROVED`) request from your client domain. Wait for it, or cancel it. |
 | `idempotency_key_conflict` | 409 | The `Idempotency-Key` was used before with a different body. |
 | `request_not_open` | 409 | The request is already resolved. |
 | `offer_not_open` | 409 | The offer was claimed, cancelled or has expired. |
@@ -93,6 +95,8 @@ Non-2xx responses carry `error.reason`. Branch on it rather than on the HTTP sta
 | `kyc_api_retired` | 410 | You called a v2 endpoint. See the [migration guide](./migration-from-v2.md). |
 | `unknown_field` | 422 | A field name is not in the [vocabulary](./fields.md). |
 | `fields_unverified` | 422 | None of the required fields is verified for this user. Check with [`/verified`](./api.md#check-which-fields-are-verified) first. |
+| `cooldown_active` | 429 | The user declined your last request recently (24 hours by default). `Retry-After` says when you may ask again. |
+| `daily_quota_exceeded` | 429 | Your daily request quota is used up. `Retry-After` says when it resets. |
 | `rate_limited` | 429 | Back off and retry. `Retry-After` may say when. |
 | `internal_error` | 500 | Unexpected error. Retry later. |
 | `entitlement_unavailable` | 503 | The entitlement check is temporarily unavailable. **Retry**; it is not an authorization failure. |

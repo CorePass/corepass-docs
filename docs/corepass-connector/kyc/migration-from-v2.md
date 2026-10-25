@@ -85,6 +85,10 @@ Field names are unchanged. `BUSINESS_*` names are now rejected on the KYC API (`
 
 App versions that only know `corepass:request/…` links and the provide/transmit flow can't answer v3 requests and are asked to update. v2 QR codes you generated before the cut-over stop working.
 
+### 14. Limits on repeated requests
+
+v2 could not push a request to a user at all: the user had to scan your QR code. v3 can, so it limits how often one application may ask one person. Only one request to a CoreID can be open at a time (`409 open_request_exists`), a declined request starts a cooldown (`429 cooldown_active`, 24 hours by default) and a daily quota applies (`429 daily_quota_exceeded`). Both `429`s carry `Retry-After`. A request names at most 64 fields, and `purpose` and `reference` are at most 512 bytes each. See [Limits](./overview.md#limits).
+
 ## Retired endpoints
 
 | v2 endpoint | Answer in v3 | Replacement |

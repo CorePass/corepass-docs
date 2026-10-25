@@ -39,9 +39,9 @@ A **KYC attestation** is an RS256-signed JWT issued by CorePass. It carries the 
     "signature": "<the user's consent signature>"
   },
   "fields": [
-    { "name": "PASSPORT_NAME", "hash": "…", "kind": "value", "value": "Jane Doe", "doc_type": "PASSPORT", "verified_at": 1750000000, "expires_at": 2050000000 },
-    { "name": "PASSPORT_DOB", "hash": "…", "kind": "value", "value": "1990-04-12", "doc_type": "PASSPORT", "verified_at": 1750000000 },
-    { "name": "PASSPORT_FACE_IMAGE", "hash": "…", "kind": "image", "doc_type": "PASSPORT",
+    { "name": "PASSPORT_NAME", "hash": "…", "kind": "value", "value": "Jane Doe", "doc_type": "passport", "verified_at": 1750000000, "expires_at": 2050000000 },
+    { "name": "PASSPORT_DOB", "hash": "…", "kind": "value", "value": "1990-04-12", "doc_type": "passport", "verified_at": 1750000000 },
+    { "name": "PASSPORT_FACE_IMAGE", "hash": "…", "kind": "image", "doc_type": "passport",
       "url": "https://api.corepass.net/api/v3/kyc/documents/01JB7Q0M8R2V4X6Z8B0D2F4H6K/PASSPORT_FACE_IMAGE" }
   ]
 }
@@ -58,7 +58,7 @@ A **KYC attestation** is an RS256-signed JWT issued by CorePass. It carries the 
 | `request_id` | The data request. It equals the envelope's `stream_id`. |
 | `requester` | Who asked: you, as registered with CorePass. |
 | `approval` | The user's consent: when they approved, `fields_digest` over the approved field hashes, and their EIP-712 signature (domain `CorePassKYC` version `1`, type `ApproveDataRequest(string requestId,bytes32 fieldsDigest)`). You don't need to check it; CorePass did. It is there so you can show the subject consented. |
-| `fields` | One entry per **released** field. `name` is the concrete field (a parent field appears as the child it resolved to). `kind: "value"` and `kind: "json"` carry `value` (for `json`, a JSON document encoded as a string). `kind: "image"` carries `url` instead, which you [fetch with your API key](./api.md#fetch-a-document-image). `doc_type`, `verified_at` and `expires_at` describe the underlying verification when known. |
+| `fields` | One entry per **released** field. `name` is the concrete field (a parent field appears as the child it resolved to). `kind: "value"` and `kind: "json"` carry `value` (for `json`, a JSON document encoded as a string). `kind: "image"` carries `url` instead, which you [fetch with your API key](./api.md#fetch-a-document-image). `doc_type`, `verified_at` and `expires_at` describe the underlying verification when known. `doc_type` is lower case: `passport`, `idcard`, `residence_permit`, `driver_license`, `proof_address`, `email`, `phone` or `external_wallet_<network>` (for example `external_wallet_btc`). |
 
 Fields that were not released (declined, unavailable, no value) are **absent** from the claims. Their `outcome` is on the [request view](./api.md#read-requests).
 

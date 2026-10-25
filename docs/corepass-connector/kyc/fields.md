@@ -38,7 +38,7 @@ Each document type offers the same 16 fields. Replace `<DOC>` with `IDCARD`, `PA
 | `<DOC>_ADDITIONAL_IMAGE` | image | 1.12 | Back of the document, when there is one |
 | `<DOC>_AML_CHECK` | value | 0.03 | `true` when the anti-money-laundering screening passed |
 | `<DOC>_AML_DETAIL` | json | 1.00 | The AML screening result |
-| `<DOC>_NOTE` | value | 0.05 | Reviewer note |
+| `<DOC>_NOTE` | value | 0.03 | Reviewer note |
 
 All 64 names:
 
@@ -77,7 +77,7 @@ From the verified proof of address.
 | `ADDRESS_ZIP_CODE` | value | 0.07 | Postal code |
 | `ADDRESS_COUNTRY` | value | 0.04 | Country |
 | `ADDRESS_DOCUMENT_IMAGE` | image | 1.00 | Image of the proof-of-address document |
-| `ADDRESS_NOTE` | value | 0.05 | Reviewer note |
+| `ADDRESS_NOTE` | value | 0.03 | Reviewer note |
 
 ## Contact
 
@@ -96,8 +96,8 @@ Addresses the user proved they control.
 | `EXTERNAL_WALLET_ETH` | Ethereum | value | 0.03 |
 | `EXTERNAL_WALLET_LTC` | Litecoin | value | 0.03 |
 | `EXTERNAL_WALLET_BNB` | BNB Chain | value | 0.03 |
-| `EXTERNAL_WALLET_POL` | Polygon | value | see [`GET /pricing`](./api.md#pricing) |
-| `EXTERNAL_WALLET_SOL` | Solana | value | see [`GET /pricing`](./api.md#pricing) |
+| `EXTERNAL_WALLET_POL` | Polygon | value | 0.03 |
+| `EXTERNAL_WALLET_SOL` | Solana | value | 0.03 |
 
 ## Parent fields {#parent-fields}
 

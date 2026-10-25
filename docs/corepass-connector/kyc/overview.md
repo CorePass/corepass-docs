@@ -47,7 +47,9 @@ You need the same dashboard setup as for login ([Dashboard setup](../dashboard-s
 
 ### Entitlement {#entitlements}
 
-Every `/api/v3/kyc/...` route requires your organization to hold the **`kyc:data-request`** entitlement. A call without it fails with `403 not_entitled`.
+Every `/api/v3/kyc/...` route that asks a person for data, or reads what they released, requires your organization to hold the **`kyc:data-request`** entitlement. A call without it fails with `403 not_entitled`.
+
+The setup routes need only `kyb:read`, which every organization holds, so you can prepare while the grant is pending: [`GET /pricing`](./api.md#pricing), [`GET /billing/charges`](./api.md#charges) and the four [webhook endpoint](./api.md#webhook-endpoint) routes.
 
 :::info Not self-service
 CorePass grants `kyc:data-request` on request. Organizations that held a KYC package under v2 received it automatically with the [package conversion](./migration-from-v2.md#packages-become-credit). Otherwise ask your CorePass contact to grant it to your organization UUID.
@@ -72,7 +74,6 @@ curl -X PUT https://api.corepass.net/api/v3/kyc/webhook-endpoint \
     "secret": "<64-hex webhook secret>",
     "secretVersion": 1,
     "active": true,
-    "created": true,
     "createdAt": "2026-10-23T10:00:00Z"
   }
 }
@@ -85,7 +86,9 @@ Store `secret` immediately. Calling `PUT` again, even with the same URL, issues 
 - The URL must be plain `https://` on a public host, without userinfo or a fragment. Redirects are not followed. Loopback, private and metadata addresses are rejected.
 - **Rotate the secret** with `POST /api/v3/kyc/webhook-endpoint/rotate-secret`. The previous secret stays valid for 24 hours.
 - **Reactivate after quarantine** with `POST /api/v3/kyc/webhook-endpoint/reactivate`. See [Retries](./webhooks.md#retries-ordering-and-recovery).
-- Offers (QR codes) **require** a registered endpoint. Without one, creating an offer fails with `409 no_webhook_endpoint`, so you find out before a customer is standing at your checkout.
+- The status code tells a first registration from a replacement: `201` when the endpoint was created, `200` when an existing one was replaced. The body has no `created` member.
+- Offers (QR codes) **require** a registered endpoint. Without one, creating an offer fails with `409 webhook_endpoint_required`, so you find out before a customer is standing at your checkout. A QR checkout has no other way to learn that the user answered.
+- Requests by CoreID work without an endpoint: follow them by [reading the request](./api.md#read-requests) and [pulling the release](./api.md#pull-the-release). Their events are delivered once you register an endpoint later.
 
 ### Prepaid credit {#billing}
 
@@ -95,9 +98,21 @@ KYC data requests are billed **per released field** in **CHF**, from your organi
 2. **Reserve**: creating a request, or a user claiming your offer, reserves the full quoted amount.
 3. **Charge**: at release you pay only for fields whose outcome is `RELEASED`. Declined, cancelled, expired and failed requests cost nothing.
 
-If your balance cannot cover a request, it is refused up front with `402 insufficient_credit`, or `402 no_credit_account` if your organization has no credit account yet. Per-field prices are on the [field reference](./fields.md) and always current at [`GET /api/v3/kyc/pricing`](./api.md#pricing).
+If your balance cannot cover a request, it is refused up front with `402 insufficient_credit` (the error carries `requiredCents` and `availableCents`), or `402 no_credit_account` if your organization has no credit account yet. An offer is checked against your balance when you create it, and the amount is reserved when a user claims it. Per-field prices are on the [field reference](./fields.md) and always current at [`GET /api/v3/kyc/pricing`](./api.md#pricing).
 
 The user who shares their data receives 90% of the charge as a reward in Core Token, and CorePass keeps 10%. You never handle tokens.
+
+## Limits {#limits}
+
+So that a user is never flooded with requests from one application:
+
+- **One open request per person.** While a request from your client domain to a CoreID is `PENDING_APPROVAL` or `APPROVED`, a new request to the same CoreID fails with `409 open_request_exists`. Wait for the answer, or [cancel](./api.md#cancel-a-request) the open one.
+- **A cooldown after a decline.** When the user declines, your next request to that CoreID fails with `429 cooldown_active` for 24 hours by default.
+- **A daily quota.** Past the daily request quota (500 requests a day by default) new requests fail with `429 daily_quota_exceeded`.
+
+Both `429` answers carry a `Retry-After` header with the number of seconds to wait.
+
+A request names at most **64 fields** (required plus optional), and `purpose` and `reference` are at most **512 bytes** of UTF-8 each. Larger requests fail with `400 malformed_request`.
 
 ## Retention {#retention}
 
