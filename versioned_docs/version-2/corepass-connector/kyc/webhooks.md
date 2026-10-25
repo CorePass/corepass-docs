@@ -5,6 +5,10 @@ sidebar_position: 3
 description: Payloads the Connector POSTs to your KYC callback URL, how to verify the Corepass-Signature HMAC header, and how to decode delivered data.
 ---
 
+:::danger Retired: this is the KYC v2 API
+The v2 KYC endpoints described on this page (`/api/v2/kyc/*`, `/api/v1/kyc/provide`, `/api/v1/kyc/transmit`, the per-request `callback`, peppers and `/api/v1/blockchain/valid`) answer `410 Gone` with reason `kyc_api_retired`. Use the [KYC v3 API](/corepass-connector/kyc/overview) and follow the [migration guide](/corepass-connector/kyc/migration-from-v2).
+:::
+
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 

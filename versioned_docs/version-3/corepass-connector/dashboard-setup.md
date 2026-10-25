@@ -1,0 +1,81 @@
+---
+title: Dashboard setup
+sidebar_label: Dashboard setup
+sidebar_position: 3
+description: One-time onboarding in the CorePass developer dashboard — sign in, KYC, organization, domain, OAuth client, API key, Source Key and webhook history.
+---
+
+All configuration happens once, in the **CorePass developer dashboard**. After that your application talks only to the public API at `https://auth.corepass.net`.
+
+:::info Dashboard address
+Your CorePass contact provides the developer dashboard URL together with your onboarding.
+:::
+
+## 1. Sign in
+
+There is **no email/password sign-up**. The dashboard's login page shows a QR code. Scan it with the CorePass app to sign in. On a mobile browser, tap **Login with CorePass** instead.
+
+## 2. Complete personal KYC
+
+Open **Profile**. If your CoreID is not KYC-verified yet, the page shows a **Kyc Your Data** button. Click it and scan the QR code with CorePass. Finish the identity verification in the app, then return to the dashboard. Profile now lists your verified fields.
+
+You only do this once per CoreID.
+
+## 3. Choose or create an organization
+
+Every dashboard action belongs to one **organization**. Pick an organization in the switcher in the header, or create a new one. The organization UUID is also what you give CorePass when you request [KYB entitlements](./kyb/overview.md#entitlements).
+
+## 4. Register your application's domain {#register-domain}
+
+Open **Applications → Create** and enter the domain that hosts your app, e.g. `app.example.com`. The dashboard checks that the domain is reachable, then registers it. Each registered domain gets a **client domain** ID that you select when creating an OAuth client and an API key.
+
+:::tip One domain per environment
+You can register several domains per organization, for example `dev.example.com`, `staging.example.com` and `app.example.com`, each with its own OAuth client and API key.
+:::
+
+## 5. Create an OAuth client {#create-oauth-client}
+
+Open **OAuth → Create**:
+
+| Field | Description |
+| --- | --- |
+| `clientName` | Human-readable name shown to users on the consent screen. |
+| `audiences` | Audience URIs the issued tokens are valid for. This is usually your API origin, e.g. `["https://api.example.com"]`. |
+| `redirectUris` | Allow-list of OAuth callback URLs in your app. At runtime `redirect_uri` must match one of them **exactly**. |
+| `clientDomainUUID` | One of the domains registered in step 4. |
+
+The response contains:
+
+- `oauth2ClientID`: your **client ID**.
+- `secret`: your **client secret**. It is **shown only once**, so store it securely.
+- `scope`, `grantTypes`, `responseTypes`, `tokenEndpointAuthMethod`: the defaults, for reference.
+
+You can edit `audiences` and `redirectUris` later.
+
+## 6. Generate an API key {#generate-api-key}
+
+Open **ApiKeys → Create** and select the same client domain. The returned `token` is your **API key**. It authenticates every server-to-server KYC and KYB call:
+
+```http
+Authorization: <YOUR_API_KEY>
+```
+
+:::warning
+The API key is sent **as-is**, with **no** `Bearer ` prefix. It is not the user's OAuth access token. Treat it like a password. To rotate it, create a new key, deploy it, then delete the old one.
+:::
+
+## 7. KYC: entitlement, webhook endpoint and credit {#source-key}
+
+KYC data requests no longer use packages or Source Keys. Before your first request:
+
+- Ask your CorePass contact for the `kyc:data-request` [entitlement](./kyc/overview.md#entitlements).
+- Register your KYC webhook endpoint with the API ([how](./kyc/overview.md#register-a-webhook-endpoint)), or in the dashboard's **KYC** section, and store its secret.
+- Top up prepaid CHF credit in the dashboard's **Billing** page. KYC and KYB draw on the same balance.
+
+:::note Existing packages
+KYC packages bought under v2 were converted into CHF credit. See [Packages become credit](./kyc/migration-from-v2.md#packages-become-credit).
+:::
+
+## 8. Inspect webhook deliveries {#webhook-history}
+
+The dashboard's **KYC** section shows each data request with its webhook delivery attempts, status codes and timestamps. Check it first when you debug your receiver. The same log is available from the API: [`GET /api/v3/kyc/data-requests/{requestId}/deliveries`](./kyc/api.md#delivery-log-events-and-redelivery).

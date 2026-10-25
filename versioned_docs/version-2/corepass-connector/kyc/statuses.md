@@ -5,6 +5,10 @@ sidebar_position: 5
 description: Lifecycle statuses of a KYC order, as returned by the status endpoints and delivered in status.updated webhooks.
 ---
 
+:::danger Retired: this is the KYC v2 API
+The v2 KYC endpoints described on this page (`/api/v2/kyc/*`, `/api/v1/kyc/provide`, `/api/v1/kyc/transmit`, the per-request `callback`, peppers and `/api/v1/blockchain/valid`) answer `410 Gone` with reason `kyc_api_retired`. Use the [KYC v3 API](/corepass-connector/kyc/overview) and follow the [migration guide](/corepass-connector/kyc/migration-from-v2).
+:::
+
 A KYC order moves through these statuses. The [status endpoints](./api.md#poll-the-latest-status) return them in upper case. [`status.updated` webhooks](./webhooks.md#status-update) carry the same values in lower case.
 
 | Status | Meaning |

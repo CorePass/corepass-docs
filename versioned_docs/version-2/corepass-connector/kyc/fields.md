@@ -5,6 +5,10 @@ sidebar_position: 4
 description: Every personal-identity field you can request through CorePass KYC transfer, plus parent fields.
 ---
 
+:::danger Retired: this is the KYC v2 API
+The v2 KYC endpoints described on this page (`/api/v2/kyc/*`, `/api/v1/kyc/provide`, `/api/v1/kyc/transmit`, the per-request `callback`, peppers and `/api/v1/blockchain/valid`) answer `410 Gone` with reason `kyc_api_retired`. Use the [KYC v3 API](/corepass-connector/kyc/overview) and follow the [migration guide](/corepass-connector/kyc/migration-from-v2).
+:::
+
 Use these exact names in the `items` of [`/api/v1/blockchain/verified`](./api.md#check-which-fields-are-verified), in `fields` / `optionalFields` of [`/api/v2/kyc/qrcode`](./api.md#generate-a-kyc-qr-code), and when you select fields for a package. Names are upper case and case-sensitive.
 
 :::info Native language vs. English

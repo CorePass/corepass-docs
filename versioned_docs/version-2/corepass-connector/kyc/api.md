@@ -5,6 +5,10 @@ sidebar_position: 2
 description: Endpoints to check verified fields, create a KYC request (QR code / deep link), poll its status and re-validate stored data.
 ---
 
+:::danger Retired: this is the KYC v2 API
+The v2 KYC endpoints described on this page (`/api/v2/kyc/*`, `/api/v1/kyc/provide`, `/api/v1/kyc/transmit`, the per-request `callback`, peppers and `/api/v1/blockchain/valid`) answer `410 Gone` with reason `kyc_api_retired`. Use the [KYC v3 API](/corepass-connector/kyc/overview) and follow the [migration guide](/corepass-connector/kyc/migration-from-v2).
+:::
+
 All endpoints are on `https://auth.corepass.net` and require your API key:
 
 ```http

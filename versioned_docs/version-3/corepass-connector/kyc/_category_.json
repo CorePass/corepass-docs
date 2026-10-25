@@ -1,0 +1,10 @@
+{
+  "label": "KYC (personal identity)",
+  "position": 5,
+  "link": {
+    "type": "generated-index",
+    "title": "KYC — personal identity data",
+    "description": "Ask a CorePass user for verified identity data (name, date of birth, documents, address, contact details) by QR code or by CoreID, and receive it as a signed attestation."
+  },
+  "collapsed": false
+}

@@ -5,6 +5,10 @@ sidebar_position: 1
 description: How KYC transfer works — request verified personal data from a logged-in CorePass user and receive it on your webhook.
 ---
 
+:::danger Retired: this is the KYC v2 API
+The v2 KYC endpoints described on this page (`/api/v2/kyc/*`, `/api/v1/kyc/provide`, `/api/v1/kyc/transmit`, the per-request `callback`, peppers and `/api/v1/blockchain/valid`) answer `410 Gone` with reason `kyc_api_retired`. Use the [KYC v3 API](/corepass-connector/kyc/overview) and follow the [migration guide](/corepass-connector/kyc/migration-from-v2).
+:::
+
 **KYC transfer** lets your application request specific **verified** identity fields from a CorePass user, such as their name, date of birth, a document number, their address or email. The user approves the request in the CorePass app, and the Connector delivers the data to your webhook.
 
 The Connector handles all blockchain interaction and settlement for you. You don't need a wallet or Core Token.

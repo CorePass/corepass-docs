@@ -1,0 +1,11 @@
+{
+  "label": "CorePass Connector",
+  "position": 2,
+  "link": {
+    "type": "generated-index",
+    "title": "CorePass Connector",
+    "description": "Integrate CorePass Login, personal identity (KYC) and business identity (KYB) into your application using the hosted CorePass Connector.",
+    "slug": "/corepass-connector"
+  },
+  "collapsible": false
+}

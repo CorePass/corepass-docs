@@ -1,0 +1,10 @@
+{
+  "label": "KYB (business identity)",
+  "position": 6,
+  "link": {
+    "type": "generated-index",
+    "title": "KYB — business identity",
+    "description": "Log in businesses, request verified company, director and UBO data, and collect business signatures through CorePass."
+  },
+  "collapsed": false
+}
