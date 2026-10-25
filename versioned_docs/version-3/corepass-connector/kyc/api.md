@@ -133,8 +133,8 @@ curl -X POST https://api.corepass.net/api/v3/kyc/data-requests \
 | --- | --- |
 | `402 insufficient_credit` | Your credit cannot cover `priceCents`. `requiredCents` and `availableCents` say by how much. |
 | `409 open_request_exists` | This CoreID already has an open request from your client domain. |
-| `429 cooldown_active` | The user declined your last request recently. Wait `Retry-After` seconds. |
-| `429 daily_quota_exceeded` | Your daily request quota is used up. Wait `Retry-After` seconds. |
+| `429 cooldown_active` | The user declined a request from this client domain recently. Only a decline starts a cooldown, never an expiry. Wait `Retry-After` seconds. |
+| `429 daily_quota_exceeded` | Your organization's daily request quota is used up. It covers all of its client domains and counts only created requests. Wait `Retry-After` seconds. |
 | `422 fields_unverified` | None of the required fields is verified for this user. |
 
 See [Limits](./overview.md#limits) for the rules behind the `409` and the `429`s.

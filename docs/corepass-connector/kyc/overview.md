@@ -107,8 +107,8 @@ The user who shares their data receives 90% of the charge as a reward in Core To
 So that a user is never flooded with requests from one application:
 
 - **One open request per person.** While a request from your client domain to a CoreID is `PENDING_APPROVAL` or `APPROVED`, a new request to the same CoreID fails with `409 open_request_exists`. Wait for the answer, or [cancel](./api.md#cancel-a-request) the open one.
-- **A cooldown after a decline.** When the user declines, your next request to that CoreID fails with `429 cooldown_active` for 24 hours by default.
-- **A daily quota.** Past the daily request quota (500 requests a day by default) new requests fail with `429 daily_quota_exceeded`.
+- **A cooldown after a decline.** When the user declines a request from your client domain, your next request from that client domain to that CoreID fails with `429 cooldown_active` for 24 hours by default. Only an explicit decline by the user starts a cooldown. A request that expires unanswered, that you cancel or that fails does not.
+- **A daily quota per organization.** Your organization may create 500 requests per UTC day by default. The quota is shared by all of your organization's client domains. Only requests that were actually created count: a request refused with `402`, `409` or `429` does not use up the quota. Past the quota, new requests fail with `429 daily_quota_exceeded` until the next UTC day.
 
 Both `429` answers carry a `Retry-After` header with the number of seconds to wait.
 

@@ -95,8 +95,8 @@ Non-2xx responses carry `error.reason`. Branch on it rather than on the HTTP sta
 | `kyc_api_retired` | 410 | You called a v2 endpoint. See the [migration guide](./migration-from-v2.md). |
 | `unknown_field` | 422 | A field name is not in the [vocabulary](./fields.md). |
 | `fields_unverified` | 422 | None of the required fields is verified for this user. Check with [`/verified`](./api.md#check-which-fields-are-verified) first. |
-| `cooldown_active` | 429 | The user declined your last request recently (24 hours by default). `Retry-After` says when you may ask again. |
-| `daily_quota_exceeded` | 429 | Your daily request quota is used up. `Retry-After` says when it resets. |
+| `cooldown_active` | 429 | The user declined a request from this client domain recently (24 hours by default). Only a decline starts a cooldown; an expired or cancelled request does not. `Retry-After` says when you may ask again. |
+| `daily_quota_exceeded` | 429 | Your organization's daily request quota is used up. It is counted per UTC day across all of the organization's client domains, and only requests that were created count. `Retry-After` says when it resets. |
 | `rate_limited` | 429 | Back off and retry. `Retry-After` may say when. |
 | `internal_error` | 500 | Unexpected error. Retry later. |
 | `entitlement_unavailable` | 503 | The entitlement check is temporarily unavailable. **Retry**; it is not an authorization failure. |
